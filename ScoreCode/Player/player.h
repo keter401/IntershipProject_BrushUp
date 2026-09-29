@@ -91,7 +91,12 @@ public:
 	EPlayerState GetPreviousState() const { return PreviousState; }
 
 	void OnCollisionEnter2D(const DWGameObject* other) override;
+	void OnCollisionStay2D(const DWGameObject* other) override;
 	void OnCollisionExit2D(const DWGameObject* other) override;
 
 	void PushBack(const DWGameObject* other);
+
+private:
+	// ブロック押し戻しと敵接触ダメージは接触中ずっと必要なので Enter / Stay 共通
+	void HandleContact(const DWGameObject* other);
 };

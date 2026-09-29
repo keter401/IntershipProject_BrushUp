@@ -24,6 +24,21 @@ void DWColliderManager::Update()
     std::vector<DWGameObject*> all = scene->GetGameObjects<DWGameObject>();
     std::unordered_set<DWGameObject*> alive(all.begin(), all.end());
 
+    // 前フレームのペア。既に delete されたオブジェクトを含むペアは捨てる
+    // (Destroy() されたポインタを触るとダングリングになるため)
+    std::vector<DWGameObject*> oldPairs;
+    oldPairs.reserve(CollideObjectList.size());
+    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    {
+        DWGameObject* a = CollideObjectList[i];
+        DWGameObject* b = CollideObjectList[i + 1];
+        if (alive.count(a) != 0 && alive.count(b) != 0)
+        {
+            oldPairs.push_back(a);
+            oldPairs.push_back(b);
+        }
+    }
+
     std::vector<DWGameObject*> targets;
     targets.reserve(all.size());
     for (auto* go : all)
@@ -35,7 +50,7 @@ void DWColliderManager::Update()
 
     const int list_Max = static_cast<int>(targets.size());
     std::vector<DWGameObject*> newPairs;
-    newPairs.reserve(CollideObjectList.size());
+    newPairs.reserve(oldPairs.size());
 
     for (int i = 0; i < list_Max - 1; ++i)
     {
@@ -45,7 +60,7 @@ void DWColliderManager::Update()
         if (objA->GetTag() == DWGameObject::ETag::BULLET)
         {
             DWBullet* bullet = dynamic_cast<DWBullet*>(objA);
-            if (!bullet->IsActive())  continue;
+            if (bullet == nullptr || !bullet->IsActive())  continue;
         }
 
         for (int j = i + 1; j < list_Max; ++j)
@@ -55,18 +70,17 @@ void DWColliderManager::Update()
 
             DWBoxCollider2D* cb = objB->GetComponent<DWBoxCollider2D>();
             if (ca == nullptr || cb == nullptr) continue;
-			if (!ca->IsActive() || !cb->IsActive()) continue;
+            if (!ca->IsActive() || !cb->IsActive()) continue;
 
             if (objB->GetTag() == DWGameObject::ETag::BULLET)
             {
                 DWBullet* bullet = dynamic_cast<DWBullet*>(objB);
-                if (!bullet->IsActive())  continue;
+                if (bullet == nullptr || !bullet->IsActive())  continue;
             }
 
             if (objA->GetTag() == DWGameObject::ETag::PLAYER && objB->GetTag() == DWGameObject::ETag::BULLET ||
                 objA->GetTag() == DWGameObject::ETag::BULLET && objB->GetTag() == DWGameObject::ETag::PLAYER)
                 continue;
-
 
             if (ObjectsOverlap(ca, cb))
             {
@@ -79,9 +93,10 @@ void DWColliderManager::Update()
         }
     }
 
-    const auto oldPairs = CollideObjectList;
     CollideObjectList = std::move(newPairs);
 
+    // --- Enter / Stay ---
+    // 前フレームにも存在したペアは Stay、初めて成立したペアは Enter
     for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
     {
         DWGameObject* a = CollideObjectList[i];
@@ -89,28 +104,71 @@ void DWColliderManager::Update()
 
         if (a == nullptr || b == nullptr) continue;
         if (a->GetDestoryFlag() || b->GetDestoryFlag()) continue;
-        if (a->GetTag() == b->GetTag()) continue;
 
-        if (a) a->OnCollisionEnter2D(b);
-        if (b) b->OnCollisionEnter2D(a);
-    }
-
-    for (size_t i = 0; i + 1 < oldPairs.size(); i += 2)
-    { 
-        DWGameObject* a = oldPairs[i];
-        DWGameObject* b = oldPairs[i + 1];
-
-        if (a == nullptr|| b == nullptr ) continue;
-        const bool destroyed = (a->GetDestoryFlag() || b->GetDestoryFlag());
-        const bool stillColliding = PairExistsIn(CollideObjectList, a, b);
-
-        if (!stillColliding || destroyed)
+        if (PairExistsIn(oldPairs, a, b))
         {
-            if (a != nullptr && !a->GetDestoryFlag()) a->OnCollisionExit2D(b);
-            if (b != nullptr && !b->GetDestoryFlag()) b->OnCollisionExit2D(a);
+            a->OnCollisionStay2D(b);
+            b->OnCollisionStay2D(a);
+        }
+        else
+        {
+            a->OnCollisionEnter2D(b);
+            b->OnCollisionEnter2D(a);
         }
     }
 
+    // --- Exit (1) 前フレームにあって今フレームに無いペア ---
+    for (size_t i = 0; i + 1 < oldPairs.size(); i += 2)
+    {
+        DWGameObject* a = oldPairs[i];
+        DWGameObject* b = oldPairs[i + 1];
+
+        if (!PairExistsIn(CollideObjectList, a, b))
+        {
+            NotifyExit(a, b);
+        }
+    }
+
+    // --- Exit (2) 今フレームのペアのうち、コールバック中に破棄/無効化されたもの ---
+    // これらは次フレームに持ち越さない (delete 済みポインタを触らない / 
+    // プールから再利用された弾が「継続中」と誤判定されない)
+    std::vector<DWGameObject*> survivors;
+    survivors.reserve(CollideObjectList.size());
+    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    {
+        DWGameObject* a = CollideObjectList[i];
+        DWGameObject* b = CollideObjectList[i + 1];
+
+        if (IsPairEnded(a, b))
+        {
+            NotifyExit(a, b);
+        }
+        else
+        {
+            survivors.push_back(a);
+            survivors.push_back(b);
+        }
+    }
+    CollideObjectList = std::move(survivors);
+}
+
+bool DWColliderManager::IsPairEnded(DWGameObject* a, DWGameObject* b)
+{
+    if (a == nullptr || b == nullptr) return true;
+    if (a->GetDestoryFlag() || b->GetDestoryFlag()) return true;
+
+    DWBoxCollider2D* ca = a->GetComponent<DWBoxCollider2D>();
+    DWBoxCollider2D* cb = b->GetComponent<DWBoxCollider2D>();
+    if (ca == nullptr || cb == nullptr) return true;
+    if (!ca->IsActive() || !cb->IsActive()) return true;
+
+    return false;
+}
+
+void DWColliderManager::NotifyExit(DWGameObject* a, DWGameObject* b)
+{
+    if (a != nullptr && !a->GetDestoryFlag()) a->OnCollisionExit2D(b);
+    if (b != nullptr && !b->GetDestoryFlag()) b->OnCollisionExit2D(a);
 }
 
 void DWColliderManager::ClearList()

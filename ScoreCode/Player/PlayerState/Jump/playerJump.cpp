@@ -52,12 +52,12 @@ void DWPlayerJump::Update()
 
 	Player->SetMoveSpeed(vel);
 
-	if (input->GetActionBottom() && Player->GetAmmoCount() > 0)
+	// クールダウン中に return すると下の落下判定まで飛ばしてしまうので、
+	// 実際に撃つときだけ抜ける
+	if (input->GetActionBottom() && Player->GetAmmoCount() > 0 &&
+		Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
 	{
-		if (Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
-		{
-			Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
-		}
+		Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
 		return;
 	}
 

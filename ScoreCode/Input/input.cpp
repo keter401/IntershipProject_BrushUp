@@ -20,7 +20,6 @@ void DWInput::Update()
 
     // --- Joypad ---
     PrevPadButtons = PadButtons;
-    GetHitKeyStateAll(KeyState);
     PadButtons = GetJoypadInputState(DX_INPUT_PAD1);
 }
 
@@ -62,7 +61,8 @@ bool DWInput::GetKeyTrigger(const int keyCode)
 
 bool DWInput::GetKeyUp(const int keyCode)
 {
-	return ((KeyState[keyCode] == 0) && !(OldKeyState[keyCode] != 0));
+	// 今フレーム離されていて、前フレームは押されていた
+	return ((KeyState[keyCode] == 0) && (OldKeyState[keyCode] != 0));
 }
 
 // ------------------ Joypad ------------------

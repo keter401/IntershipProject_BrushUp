@@ -18,13 +18,9 @@ void DWPlayerFall::Update()
 	DWInput* input = Player->GetInput();
 	if (input == nullptr) return;
 
-	if (input->GetActionBottom() && Player->GetAmmoCount() > 0)
-	{
-		if (Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
-			Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
-		return;
-	}
-
+	// 重力と横移動を先に済ませる。
+	// 以前はここでショット判定→return していたため、ボタン押しっぱなしの間
+	// 重力も横移動も止まり、ShotRebound だけが効いて上昇してしまっていた。
 	Player->GravityForce();
 
 	DWVector2 vel = Player->GetMoveSpeed();
@@ -45,6 +41,13 @@ void DWPlayerFall::Update()
 	}
 
 	Player->SetMoveSpeed(vel);
+
+	if (input->GetActionBottom() && Player->GetAmmoCount() > 0 &&
+		Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
+	{
+		Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
+		return;
+	}
 }
 
 void DWPlayerFall::Exit()

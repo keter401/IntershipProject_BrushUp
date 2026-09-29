@@ -37,38 +37,31 @@ void DWField::Uninit()
 
 void DWField::Update()
 {
-    if (IsPlayerPastAllStagesBottom())
-    {
-        if (!bGoal)
-        {
-            GoalReachCounter++;
-            if (GoalReachCounter >= GoalWaitFrames)
-            {
-                bGoal = true;
-            }
-            else
-            {
-                DWUI* ui = CurrentScene->GetGameObject<DWUI>();
-                if(ui != nullptr)
-                {
-                    ui->AddStageNumber();
-				}
-
-                BuildSequence();
-                ClearFieldLayer();
-                SpawnAllStages();
-                EnsurePlayerIfAbsent();
-                bGoal = false;
-                GoalReachCounter = 0;
-            }
-        }
-         return;
-    }
-    else
+    if (!IsPlayerPastAllStagesBottom())
     {
         bGoal = false;
         GoalReachCounter = 0;
+        return;
     }
+
+    // 到達後の再生成は1回だけ。プレイヤーがスタート地点へ戻れば上の分岐でリセットされる
+    if (bGoal) return;
+
+    GoalReachCounter++;
+    if (GoalReachCounter < GoalWaitFrames) return;
+
+    bGoal = true;
+
+    DWUI* ui = CurrentScene->GetGameObject<DWUI>();
+    if (ui != nullptr)
+    {
+        ui->AddStageNumber();
+    }
+
+    BuildSequence();
+    ClearFieldLayer();
+    SpawnAllStages();
+    EnsurePlayerIfAbsent();
 }
 
 void DWField::LoadStageFiles(const std::string& dir)
@@ -141,7 +134,17 @@ std::vector<int> DWField::ParseRow(const std::string& s)
     std::string tok;
     while (std::getline(ss, tok, ','))
     {
-        row.push_back(std::stoi(tok));
+        // 空セルや数値でないトークンは 0 (空) として扱い、例外で落とさない
+        int value = 0;
+        try
+        {
+            value = std::stoi(tok);
+        }
+        catch (const std::exception&)
+        {
+            value = 0;
+        }
+        row.push_back(value);
     }
     return row;
 }
@@ -224,14 +227,13 @@ void DWField::SpawnStageObjects(const std::string& stageName, int stageIndex)
             }
             case 3:
             {
-                DWFloatingEnemy* enemy = CurrentScene->AddGameObject<DWFloatingEnemy>(DWScene::FIELD, CurrentScene, pos);
-                if (enemy == nullptr) return;
+                // return するとステージ残りの生成ごと止まるので break
+                CurrentScene->AddGameObject<DWFloatingEnemy>(DWScene::FIELD, CurrentScene, pos);
                 break;
             }
             case 4:
             {
-                DWCrawlingEnemy* enemy = CurrentScene->AddGameObject<DWCrawlingEnemy>(DWScene::FIELD, CurrentScene, pos);
-                if (enemy == nullptr) return;
+                CurrentScene->AddGameObject<DWCrawlingEnemy>(DWScene::FIELD, CurrentScene, pos);
                 break;
             }
             case 5:

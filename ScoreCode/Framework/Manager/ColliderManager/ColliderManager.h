@@ -22,6 +22,11 @@ private:
         const std::vector<DWGameObject*>& flatList,
         DWGameObject* a, DWGameObject* b) const;
 
+    // 破棄フラグ / コライダー無効化で、このペアがもう成立しないか
+    static bool IsPairEnded(DWGameObject* a, DWGameObject* b);
+    // 生存している側にだけ Exit を通知
+    static void NotifyExit(DWGameObject* a, DWGameObject* b);
+
 public:
     DWColliderManager(DWScene* scene) : DWManager(scene) {}
 

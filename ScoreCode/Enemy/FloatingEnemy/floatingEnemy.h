@@ -30,6 +30,7 @@ public:
 	void EnemyDamaged() override { EnemyBodyColor = GetColor(255, 0, 0); }
 
 	void OnCollisionEnter2D(const DWGameObject* other) override;
+	void OnCollisionStay2D(const DWGameObject* other) override;
 	void OnCollisionExit2D(const DWGameObject* other) override;
 	void PushBack(const DWGameObject* other);
 };

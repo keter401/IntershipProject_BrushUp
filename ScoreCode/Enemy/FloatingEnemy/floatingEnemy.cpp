@@ -166,6 +166,17 @@ void DWFloatingEnemy::OnCollisionEnter2D(const DWGameObject* other)
 	}
 }
 
+void DWFloatingEnemy::OnCollisionStay2D(const DWGameObject* other)
+{
+	if (other == nullptr) return;
+
+	// 押し戻しだけは接触中ずっと必要。弾ダメージは Enter の1回だけ
+	if (other->GetTag() == DWGameObject::ETag::BLOCK)
+	{
+		PushBack(other);
+	}
+}
+
 void DWFloatingEnemy::OnCollisionExit2D(const DWGameObject* other)
 {
 

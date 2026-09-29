@@ -1,6 +1,6 @@
 #pragma once
 
-#include <math.h>
+#include <cmath>
 
 class DWVector2
 {
@@ -48,11 +48,12 @@ public:
 	float length() const;
 
 	// ２つの点の距離を計算する
-	inline float distance(const DWVector2& a, const DWVector2& b);
+	// (ヘッダで inline 宣言し cpp で定義すると、他の翻訳単位から呼んだ瞬間にリンクエラーになる)
+	static float distance(const DWVector2& a, const DWVector2& b);
 
 	// 内積
-	float dot(const DWVector2& a, const DWVector2& b) const;
+	static float dot(const DWVector2& a, const DWVector2& b);
 
-	// 外積
-	DWVector2 cross(const DWVector2& a, const DWVector2& b) const;
+	// 外積 (2D ではスカラー。正なら b は a の反時計回り側)
+	static float cross(const DWVector2& a, const DWVector2& b);
 };

@@ -84,7 +84,7 @@ DWVector2& DWVector2::operator /=(float a)
 void DWVector2::normalize() {
 	float magSq = x * x + y * y;
 	if (magSq > 0.0f) {	// 0除算をチェックする
-		float oneOverMag = static_cast<float> (1.0f / sqrt(magSq));
+		float oneOverMag = 1.0f / std::sqrt(magSq);
 		x *= oneOverMag;
 		y *= oneOverMag;
 	}
@@ -92,27 +92,24 @@ void DWVector2::normalize() {
 
 // 長さ
 float DWVector2::length() const {
-	return static_cast<float> (sqrt(x * x + y * y));
+	return std::sqrt(x * x + y * y);
 }
 
 // ２つの点の距離を計算する
-inline float DWVector2::distance(const DWVector2& a, const DWVector2& b) {
+float DWVector2::distance(const DWVector2& a, const DWVector2& b) {
 	float dx = a.x - b.x;
 	float dy = a.y - b.y;
-	return static_cast<float> (sqrt(dx * dx + dy * dy));
+	return std::sqrt(dx * dx + dy * dy);
 }
 
 // 内積
-float DWVector2::dot(const DWVector2& a, const DWVector2& b) const
+float DWVector2::dot(const DWVector2& a, const DWVector2& b)
 {
 	return a.x * b.x + a.y * b.y;
 }
 
 // 外積
-DWVector2 DWVector2::cross(const DWVector2& a, const DWVector2& b) const
+float DWVector2::cross(const DWVector2& a, const DWVector2& b)
 {
-	return DWVector2(
-		a.y * b.x - a.x * b.y,
-		a.x * b.y - a.y * b.x
-	);
+	return a.x * b.y - a.y * b.x;
 }

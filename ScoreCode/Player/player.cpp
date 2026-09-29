@@ -313,6 +313,16 @@ void DWPlayer::DamagedByOther(float damage, const DWGameObject* other)
 
 void DWPlayer::OnCollisionEnter2D(const DWGameObject* other)
 {
+	HandleContact(other);
+}
+
+void DWPlayer::OnCollisionStay2D(const DWGameObject* other)
+{
+	HandleContact(other);
+}
+
+void DWPlayer::HandleContact(const DWGameObject* other)
+{
 	if (other == nullptr) return;
 
 	switch (other->GetTag())

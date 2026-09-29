@@ -82,7 +82,11 @@ public:
 		return nullptr;
 	}
 
+	// 衝突開始フレームに1回だけ呼ばれる
 	virtual void OnCollisionEnter2D(const DWGameObject* other) {};
+	// 衝突継続中、2フレーム目以降に毎フレーム呼ばれる
+	virtual void OnCollisionStay2D(const DWGameObject* other) {};
+	// 衝突が終了したフレームに1回だけ呼ばれる
 	virtual void OnCollisionExit2D(const DWGameObject* other) {};
 
 	DWScene* GetScene() const { return Scene; }
