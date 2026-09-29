@@ -20,11 +20,12 @@ protected:
 public:
 	DWManager() = default;
 	DWManager(DWScene* scene) : CurrentScene(scene) {}
+	virtual ~DWManager() = default;
 
     virtual void Init();
     virtual void Uninit();
     virtual void Update();
 
     DWScene* GetCurrentScene() { return CurrentScene; }
-    const EManagerTag GetManagerTag() const { return Tag; }
+    EManagerTag GetManagerTag() const { return Tag; }
 };

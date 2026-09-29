@@ -10,18 +10,8 @@ void DWPlayerJump::Enter()
 {
 	if (Player == nullptr) return;
 
-	DWPlayer::EPlayerState previousState = Player->GetPreviousState();
-
-	switch (previousState)
-	{
-	case DWPlayer::EPlayerState::Idle:
-	case DWPlayer::EPlayerState::Move:
-	case DWPlayer::EPlayerState::Land:
-		Player->PlayerJump();
-		break;
-	default:
-		break;
-	}
+	// Jump へ入るのは Idle / Move からだけ (Shot ステートが無くなったので再入はない)
+	Player->PlayerJump();
 }
 
 void DWPlayerJump::Update()
@@ -35,30 +25,27 @@ void DWPlayerJump::Update()
 
 	DWVector2 vel = Player->GetMoveSpeed();
 
-	if (input->GetRightBottom())
+	if (input->GetRightButton())
 	{
 		vel.x = Player->GetVelocity();
 		Player->SetIsFaceRight(true);
 	}
-	else if (input->GetLeftBottom())
+	else if (input->GetLeftButton())
 	{
 		vel.x = -Player->GetVelocity();
 		Player->SetIsFaceRight(false);
 	}
-	else if (!input->GetLeftBottom() && !input->GetRightBottom())
+	else if (!input->GetLeftButton() && !input->GetRightButton())
 	{
 		vel.x = 0.0f;
 	}
 
 	Player->SetMoveSpeed(vel);
 
-	// クールダウン中に return すると下の落下判定まで飛ばしてしまうので、
-	// 実際に撃つときだけ抜ける
-	if (input->GetActionBottom() && Player->GetAmmoCount() > 0 &&
-		Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
+	// 射撃はステート遷移ではなくアクション。撃てなければ何も起きない
+	if (input->GetActionButton())
 	{
-		Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
-		return;
+		Player->TryShoot();
 	}
 
 	if (vel.y >= 0.0f)

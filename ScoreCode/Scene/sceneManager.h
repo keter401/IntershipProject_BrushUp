@@ -1,11 +1,13 @@
 #pragma once
 #include "main.h"
 
+class DWScene;
+
 class DWSceneManager
 {
 private:
-	class DWScene* CurrentScene = nullptr;
-	class DWScene* NextScene = nullptr;
+	DWScene* CurrentScene = nullptr;
+	DWScene* NextScene = nullptr;
 
 	DWInput* Input = nullptr;
 
@@ -19,10 +21,12 @@ public:
 
 	DWScene* GetScene() const { return CurrentScene; }
 
-    template <typename T>
-    void ChangeScene()
-    {
-        NextScene = new T(this, Input);
-		ChangeSceneProcess();
-    }
+	// ‘JˆÚ‚ğ—\–ñ‚·‚éBÀÛ‚ÌØ‘Ö‚Í Update() ‚Å CurrentScene->Update() ‚ª•Ô‚Á‚Ä‚©‚çs‚¤
+	// (Scene::Update ‚Ì“r’†‚Å©•ª©g‚ğ delete ‚µ‚È‚¢‚½‚ß)
+	template <typename T>
+	void ChangeScene()
+	{
+		delete NextScene;   // “¯ˆêƒtƒŒ[ƒ€‚É 2 ‰ñ—\–ñ‚³‚ê‚½‚çŒãŸ‚¿
+		NextScene = new T(this, Input);
+	}
 };

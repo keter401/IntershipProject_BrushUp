@@ -101,10 +101,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
     timeEndPeriod(1);
 
-    // 終了処理
-    DxLib_End();
-    
+    // 終了処理: サウンド解放などが DxLib の関数を呼ぶので、シーンを先に片付けてから DxLib_End
     sceneManager.Uninit();
+    DxLib_End();
     CoUninitialize();
 
     UnregisterClass(CLASS_NAME, wcex.hInstance);

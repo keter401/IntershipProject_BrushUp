@@ -20,7 +20,6 @@ private:
     static constexpr int kSoundCount = 4;
 
     std::vector<int> Handles;
-    bool bReuseableObject = true;
 
     int IndexOf(ESoundType type) const;
 
@@ -33,8 +32,6 @@ public:
     void Init() override {};
     void Uninit() override {};
     void Update() override {};
-
-    bool IsReuseableObject() const { return bReuseableObject; }
 
     void PlayAudio(ESoundType type);
 

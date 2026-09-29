@@ -2,19 +2,17 @@
 #include "Framework\Components\BoxCollider\BoxCollider.h"
 #include "Scene\Scenes\scene.h"
 #include "Framework\gameObject.h"
-#include "Camera\camera.h"
 #include "Audio\audio.h"
 
 void DWFloatingEnemy::Init()
 {
-	bDestory = false;
+	bDestroy = false;
 	Scale = Size;
 	Rotation = Rot;
-	SetHealth(Health);
+	ResetHealth(InitialHealth);
 	Tag = DWGameObject::ETag::ENEMY;
 
 	AddComponent<DWBoxCollider2D>(this);
-	RegistPendingComponents();
 
 	EnemyBodyColor = GetColor(0, 255, 255);
 
@@ -30,25 +28,22 @@ void DWFloatingEnemy::Uninit()
 
 void DWFloatingEnemy::Update()
 {
-	DWVector2 offset(0.0f, 0.0f);
-	if (Scene != nullptr)
+	// ˆê“x‰æ–Ê“à‚É“ü‚Á‚½‚ç“®‚«o‚·
+	if (!bCanMove && Scene != nullptr && Scene->GetMainCamera() != nullptr)
 	{
-		if (auto* cam = Scene->GetGameObject<DWCamera>())
+		const DWVector2 offset = GetCameraOffset();
+
+		const float screenLeft = offset.x;
+		const float screenRight = offset.x + SCREEN_WIDTH;
+		const float screenTop = offset.y;
+		const float screenBottom = offset.y + SCREEN_HEIGHT;
+
+		if (Position.x + Scale.x * 0.5f > screenLeft &&
+			Position.x - Scale.x * 0.5f < screenRight &&
+			Position.y + Scale.y * 0.5f > screenTop &&
+			Position.y - Scale.y * 0.5f < screenBottom)
 		{
-			offset = cam->GetOffset();
-
-			float screenLeft = offset.x;
-			float screenRight = offset.x + SCREEN_WIDTH;
-			float screenTop = offset.y;
-			float screenBottom = offset.y + SCREEN_HEIGHT;
-
-			if (Position.x + Scale.x * 0.5f > screenLeft &&
-				Position.x - Scale.x * 0.5f < screenRight &&
-				Position.y + Scale.y * 0.5f > screenTop &&
-				Position.y - Scale.y * 0.5f < screenBottom)
-			{
-				bCanMove = true;
-			}
+			bCanMove = true;
 		}
 	}
 
@@ -80,28 +75,15 @@ void DWFloatingEnemy::DataUpdate()
 
 void DWFloatingEnemy::Draw()
 {
-	DWVector2 offset(0.0f, 0.0f);
-	if (Scene != nullptr)
-	{
-		if (auto* cam = Scene->GetGameObject<DWCamera>())
-		{
-			offset = cam->GetOffset();
-		}
-	}
-
-	topLeftX = static_cast<int>((Position.x - Scale.x * 0.5f) - offset.x);
-	topLeftY = static_cast<int>((Position.y - Scale.y * 0.5f) - offset.y);
-	bottomRightX = static_cast<int>((Position.x + Scale.x * 0.5f) - offset.x);
-	bottomRightY = static_cast<int>((Position.y + Scale.y * 0.5f) - offset.y);
-
-	DrawBox(topLeftX, topLeftY, bottomRightX, bottomRightY, EnemyBodyColor, true);
+	const DWScreenRect rect = GetScreenRect();
+	DrawBox(rect.left, rect.top, rect.right, rect.bottom, EnemyBodyColor, true);
 
 #ifdef _DEBUG
 	const TCHAR* text;
 	text = _T("•‚—V“G");
 	const unsigned int color = GetColor(255, 255, 255);
 
-	DrawString(topLeftX, topLeftY, text, color);
+	DrawString(rect.left, rect.top, text, color);
 
 	for (auto& component : ComponentsList)
 	{
@@ -136,7 +118,7 @@ void DWFloatingEnemy::TakeDamaged(const float damage)
 	if(CurrentHealth <= 0.0f)
 	{
 		CurrentHealth = 0.0f;
-		bDestory = true;
+		bDestroy = true;
 
 		if (Audio != nullptr)
 		{
@@ -145,7 +127,7 @@ void DWFloatingEnemy::TakeDamaged(const float damage)
 	}
 }
 
-void DWFloatingEnemy::OnCollisionEnter2D(const DWGameObject* other)
+void DWFloatingEnemy::OnCollisionEnter2D(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -166,7 +148,7 @@ void DWFloatingEnemy::OnCollisionEnter2D(const DWGameObject* other)
 	}
 }
 
-void DWFloatingEnemy::OnCollisionStay2D(const DWGameObject* other)
+void DWFloatingEnemy::OnCollisionStay2D(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -177,7 +159,7 @@ void DWFloatingEnemy::OnCollisionStay2D(const DWGameObject* other)
 	}
 }
 
-void DWFloatingEnemy::OnCollisionExit2D(const DWGameObject* other)
+void DWFloatingEnemy::OnCollisionExit2D(DWGameObject* other)
 {
 
 }
@@ -185,42 +167,19 @@ void DWFloatingEnemy::OnCollisionExit2D(const DWGameObject* other)
 
 void DWFloatingEnemy::PushBack(const DWGameObject* other)
 {
-	if (other == nullptr) return;
-
-	DWVector2 objPos = other->GetPosition();
-	const DWVector2 objHalfScale = other->GetScale() * 0.5f;
-	const DWVector2 halfSize = Scale * 0.5f;
-
-	const float distanceX = objPos.x - Position.x;
-	const float distanceY = objPos.y - Position.y;
-
-	const float px = (halfSize.x + objHalfScale.x) - std::abs(distanceX);
-	const float py = (halfSize.y + objHalfScale.y) - std::abs(distanceY);
-
-	if (px <= 0.0f || py <= 0.0f) return;
-
-	if (px < py)
+	switch (ResolvePenetration(other))
 	{
-		if (distanceX < 0.0f)
-		{
-			Position.x = other->GetPosition().x + (objHalfScale.x + halfSize.x);
-		}
-		else
-		{
-			Position.x = other->GetPosition().x - (objHalfScale.x + halfSize.x);
-		}
+	case EPushBackSide::Left:
+	case EPushBackSide::Right:
 		MoveSpeed.x = 0.0f;
-	}
-	else
-	{
-		if (distanceY < 0.0f)
-		{
-			Position.y = other->GetPosition().y + (objHalfScale.y + halfSize.y);
-		}
-		else
-		{
-			Position.y = other->GetPosition().y - (objHalfScale.y + halfSize.y);
-		}
+		break;
+
+	case EPushBackSide::Top:
+	case EPushBackSide::Bottom:
 		MoveSpeed.y = 0.0f;
+		break;
+
+	default:
+		break;
 	}
 }

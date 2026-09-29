@@ -21,29 +21,29 @@ void DWPlayerMove::Update()
 
 	DWVector2 vel = Player->GetMoveSpeed();
 
-	if (input->GetRightBottom())
+	if (input->GetRightButton())
 	{
 		vel.x = Player->GetVelocity();
 		Player->SetIsFaceRight(true);
 	}
-	else if (input->GetLeftBottom())
+	else if (input->GetLeftButton())
 	{
 		vel.x = -Player->GetVelocity();
 		Player->SetIsFaceRight(false);
 	}
-	else if (!input->GetLeftBottom() && !input->GetRightBottom())
+	else if (!input->GetLeftButton() && !input->GetRightButton())
 	{
 		vel.x = 0.0f;
 	}
 
 	Player->SetMoveSpeed(vel);
 
-	if (!input->GetLeftBottom() && !input->GetRightBottom())
+	if (!input->GetLeftButton() && !input->GetRightButton())
 	{
 		Player->SetCurrentState(DWPlayer::EPlayerState::Idle);
 		return;
 	}
-	if (input->GetActionBottom())
+	if (input->GetActionButton())
 	{
 		Player->SetCurrentState(DWPlayer::EPlayerState::Jump);
 		DWAudio* audio = Player->GetAudio();

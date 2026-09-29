@@ -11,6 +11,7 @@ class DWBulletManager : public DWManager
 {
 private:
     size_t Capacity;
+    // 弾の所有者はシーン。ここは貸し出し状態の管理のみ
     std::vector<DWBullet*> Storage;
     std::vector<DWBullet*> Free;
     std::vector<DWBullet*> Active;

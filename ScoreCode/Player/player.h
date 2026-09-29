@@ -5,41 +5,44 @@
 class DWPlayer : public DWInGameCharacter
 {
 public:
+	// 着地 (Land) と射撃 (Shot) は 1 フレームで完結する「アクション」なので
+	// ステートにせず OnLanded() / TryShoot() で処理する
 	enum EPlayerState
 	{
 		Idle = 0,
 		Move = 1,
 		Jump = 2,
-		Shot = 3,
-		Fall = 4,
-		Land = 5,
+		Fall = 3,
+
+		StateCount,
 	};
 
 private:
+	static constexpr DWVector2 Size = ObjectSize;
+	static constexpr DWVector2 Rot = DWVector2{ 0.0f, 0.0f };
+	static constexpr int AmmoMax = 10;
+	static constexpr float Velocity = 5.0f;
+	static constexpr float PlayerMaxHealth = 5.0f;
+	static constexpr float JumpPower = 15.0f;
+	static constexpr float DefaultGravity = 0.4f;
+	static constexpr float TerminalVelocity = 15.0f;
+	static constexpr float ShotReboundPower = 0.5f;
+	static constexpr float TreadReboundPower = 10.0f;
+	static constexpr float DamagedReboundPower = 15.0f;
+	static constexpr int InvincibleFrame = 90;
+	static constexpr int ShotCoolDownFrame = 5;
 
-	const DWVector2 Size = ObjectSize;
-	const DWVector2 Rot = DWVector2{ 0.0f, 0.0f };
-	const int AmmoMax = 10;
-	const float Velocity = 5.0f;
-	const float MaxHealth = 5.0f;
-	const float JumpPower = 15.0f;
-	const float DefaultGravity = 0.4f;
+	// DxLib の GetColor は実行時にしか呼べないので、色だけはインスタンスごとに持つ
 	const unsigned int DefaultColor = GetColor(255, 255, 255);
-	const float TerminalVelocity = 15.0f;
-	const float ShotReboundPower = 0.5f;
-	const float TreadReboundPower = 10.0f;
-	const float DamagedReboundPower = 15.0f;
-	const int InvincibleFrame = 90;
 
-	DWVector2 MoveDirection;
-	int AmmoCount;
-	bool bIsFaceRight;
+	int AmmoCount = AmmoMax;
+	bool bIsFaceRight = true;
 
 	int ShotCoolDownCounter = 0;
-	int ShotCoolDownFrame = 0;
 
-	unsigned int PlayerBodyColor;
+	unsigned int PlayerBodyColor = DefaultColor;
 
+	// ステートはプレイヤーが所有し、Uninit で delete する
 	std::vector<DWState*> PlayerStatesList;
 
 	EPlayerState CurrentState = EPlayerState::Idle;
@@ -66,6 +69,11 @@ public:
 	void TakeDamaged(float damage) override;
 	void DamagedByOther(float damage, const DWGameObject* other);
 
+	// 弾があり、クールダウンが明けていれば撃つ。撃ったら true
+	bool TryShoot();
+	// ブロックの上に乗った瞬間の処理 (弾補充・落下速度リセット・Idle へ)
+	void OnLanded();
+
 	void Init() override;
 	void Uninit() override;
 	void Update() override;
@@ -73,10 +81,8 @@ public:
 	void Draw() override;
 
 	DWVector2 GetSize() const { return Size; }
-	DWVector2 GetRotation() const { return Rotation; }
 	int GetAmmoCount() const { return AmmoCount; }
 	float GetVelocity() const { return Velocity; }
-	float GetMaxHealth() const { return MaxHealth; }
 	float GetJumpPower() const { return JumpPower; }
 	float GetGravity() const { return DefaultGravity; }
 	int GetShootCoolDownCounter() const { return ShotCoolDownCounter; }
@@ -90,13 +96,13 @@ public:
 	EPlayerState GetCurrentState() const { return CurrentState; }
 	EPlayerState GetPreviousState() const { return PreviousState; }
 
-	void OnCollisionEnter2D(const DWGameObject* other) override;
-	void OnCollisionStay2D(const DWGameObject* other) override;
-	void OnCollisionExit2D(const DWGameObject* other) override;
+	void OnCollisionEnter2D(DWGameObject* other) override;
+	void OnCollisionStay2D(DWGameObject* other) override;
+	void OnCollisionExit2D(DWGameObject* other) override;
 
 	void PushBack(const DWGameObject* other);
 
 private:
 	// ブロック押し戻しと敵接触ダメージは接触中ずっと必要なので Enter / Stay 共通
-	void HandleContact(const DWGameObject* other);
+	void HandleContact(DWGameObject* other);
 };

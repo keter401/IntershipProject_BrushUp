@@ -24,8 +24,6 @@ void DWField::Init()
 
     SpawnAllStages();
 
-    EnsurePlayerIfAbsent();
-
     bGoal = false;
     GoalReachCounter = 0;
 }
@@ -61,7 +59,6 @@ void DWField::Update()
     BuildSequence();
     ClearFieldLayer();
     SpawnAllStages();
-    EnsurePlayerIfAbsent();
 }
 
 void DWField::LoadStageFiles(const std::string& dir)
@@ -215,25 +212,25 @@ void DWField::SpawnStageObjects(const std::string& stageName, int stageIndex)
             {
             case 1:
             {
-                DWBlock* block = CurrentScene->AddGameObject<DWBlock>(DWScene::FIELD, CurrentScene, pos);
+                DWBlock* block = CurrentScene->AddGameObject<DWBlock>(DWScene::FIELD, pos);
                 if (block != nullptr) block->SetBreakable(false);
                 break;
             }
             case 2:
             {
-                DWBlock* block = CurrentScene->AddGameObject<DWBlock>(DWScene::FIELD, CurrentScene, pos);
+                DWBlock* block = CurrentScene->AddGameObject<DWBlock>(DWScene::FIELD, pos);
                 if (block != nullptr) block->SetBreakable(true);
                 break;
             }
             case 3:
             {
                 // return するとステージ残りの生成ごと止まるので break
-                CurrentScene->AddGameObject<DWFloatingEnemy>(DWScene::FIELD, CurrentScene, pos);
+                CurrentScene->AddGameObject<DWFloatingEnemy>(DWScene::FIELD, pos);
                 break;
             }
             case 4:
             {
-                CurrentScene->AddGameObject<DWCrawlingEnemy>(DWScene::FIELD, CurrentScene, pos);
+                CurrentScene->AddGameObject<DWCrawlingEnemy>(DWScene::FIELD, pos);
                 break;
             }
             case 5:
@@ -253,14 +250,6 @@ void DWField::SpawnStageObjects(const std::string& stageName, int stageIndex)
     }
 }
 
-void DWField::EnsurePlayerIfAbsent()
-{
-    DWGameObject* player = CurrentScene->GetGameObjectByTag(DWGameObject::ETag::PLAYER);
-    if (player != nullptr) return;
-
-    DWVector2 pos = TileToWorld(1, 1, 0);
-}
-
 void DWField::ClearFieldLayer()
 {
     std::vector<DWGameObject*> objs = CurrentScene->GetGameObjects<DWGameObject>();
@@ -269,9 +258,9 @@ void DWField::ClearFieldLayer()
     for (DWGameObject* obj : objs)
     {
         if (obj == nullptr) continue;
-        if (!obj->IsReuseableObject())
+        if (!obj->IsReusableObject())
         {
-            obj->SetDestory();
+            obj->SetDestroy();
         }
     }
 

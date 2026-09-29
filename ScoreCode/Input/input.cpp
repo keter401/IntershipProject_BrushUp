@@ -23,27 +23,27 @@ void DWInput::Update()
     PadButtons = GetJoypadInputState(DX_INPUT_PAD1);
 }
 
-bool DWInput::GetRightBottom()
+bool DWInput::GetRightButton()
 {
     return GetKeyPress(KEY_INPUT_RIGHT) || GetPadPress(PAD_INPUT_RIGHT);
 }
 
-bool DWInput::GetLeftBottom()
+bool DWInput::GetLeftButton()
 {
     return GetKeyPress(KEY_INPUT_LEFT) || GetPadPress(PAD_INPUT_LEFT);
 }
 
-bool DWInput::GetActionBottom()
+bool DWInput::GetActionButton()
 {
     return GetKeyPress(KEY_INPUT_SPACE) || GetKeyPress(KEY_INPUT_RSHIFT) || GetPadPress(PAD_INPUT_A);
 }
 
-bool DWInput::GetActionBottomTrigger()
+bool DWInput::GetActionButtonTrigger()
 {
     return GetKeyTrigger(KEY_INPUT_SPACE) || GetKeyTrigger(KEY_INPUT_RSHIFT) || GetPadTrigger(PAD_INPUT_A);
 }
 
-bool DWInput::GetActionBottomUp()
+bool DWInput::GetActionButtonUp()
 {
     return GetKeyUp(KEY_INPUT_SPACE) || GetKeyUp(KEY_INPUT_RSHIFT) || GetPadUp(PAD_INPUT_A);
 }

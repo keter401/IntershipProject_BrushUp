@@ -2,6 +2,7 @@
 #include "Bullet\bullet.h"
 #include "Scene\Scenes\scene.h"
 #include "Player\player.h"
+#include <algorithm>
 
 void DWBulletManager::Init()
 {
@@ -14,11 +15,11 @@ void DWBulletManager::Init()
     for (size_t i = 0; i < Capacity; ++i)
     {
         DWBullet* bullet = new DWBullet();
-        bullet->Init();
+
+        // Init はシーンが行う。弾の所有者はシーン (GameObjectList) で、このマネージャは貸し出し台帳だけ持つ
+        CurrentScene->AddGameObject(bullet, DWScene::ELAYER::FIELD);
         bullet->Deactivate();
         bullet->SetNumber(static_cast<int>(i + 1));
-
-        CurrentScene->AddGameObject(bullet, DWScene::ELAYER::FIELD);
 
         Storage.push_back(bullet);
         Free.push_back(bullet);
@@ -27,14 +28,7 @@ void DWBulletManager::Init()
 
 void DWBulletManager::Uninit()
 {
-    for (DWBullet* bullet : Storage)
-    {
-        if (bullet != nullptr)
-        {
-            bullet->Uninit();
-            delete bullet;
-        }
-    }
+    // 弾本体はシーンが delete する。ここでは台帳を空にするだけ
     Storage.clear();
     Free.clear();
     Active.clear();

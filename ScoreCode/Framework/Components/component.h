@@ -8,6 +8,7 @@ private:
 	DWGameObject* OwnerObject;
 public:
 	DWComponent(DWGameObject* owner) : OwnerObject(owner) {}
+	virtual ~DWComponent() = default;
 
 	DWGameObject* GetOwner() const { return OwnerObject; }
 

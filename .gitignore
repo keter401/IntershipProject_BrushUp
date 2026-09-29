@@ -15,6 +15,7 @@ x86/
 *.log
 *.tlog
 *.idb
+Log.txt
 
 # ─── Visual Studio のユーザー設定・キャッシュ
 .vs/

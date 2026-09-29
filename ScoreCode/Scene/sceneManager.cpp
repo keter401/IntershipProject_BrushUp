@@ -1,10 +1,10 @@
- #include "Scene\sceneManager.h"
- #include "Scene\Scenes\TitleScene\titleScene.h"
+#include "Scene\sceneManager.h"
+#include "Scene\Scenes\scene.h"
+#include "Scene\Scenes\TitleScene\titleScene.h"
 
 void DWSceneManager::Init()
 {
 	Input = new DWInput();
-
 	Input->Init();
 
 	ChangeScene<DWTitleScene>();
@@ -13,18 +13,25 @@ void DWSceneManager::Init()
 
 void DWSceneManager::Uninit()
 {
-	Input->Uninit();
-
 	if (CurrentScene)
 	{
 		CurrentScene->Uninit();
 		delete CurrentScene;
+		CurrentScene = nullptr;
 	}
 
 	if (NextScene)
 	{
-		NextScene->Uninit();
+		// Init 前のシーンなので Uninit は不要
 		delete NextScene;
+		NextScene = nullptr;
+	}
+
+	if (Input)
+	{
+		Input->Uninit();
+		delete Input;
+		Input = nullptr;
 	}
 }
 
@@ -32,28 +39,28 @@ void DWSceneManager::Update()
 {
 	Input->Update();
 
-	CurrentScene->Update();
+	if (CurrentScene) CurrentScene->Update();
+
+	ChangeSceneProcess();
 }
 
 void DWSceneManager::Draw()
 {
-	CurrentScene->Draw();
+	if (CurrentScene) CurrentScene->Draw();
 }
 
 void DWSceneManager::ChangeSceneProcess()
 {
-	if (NextScene != nullptr)
+	if (NextScene == nullptr) return;
+
+	if (CurrentScene)
 	{
-		if (CurrentScene)
-		{
-			CurrentScene->Uninit();
-			delete CurrentScene;
-		}
-
-		CurrentScene = NextScene; 
-		CurrentScene->Init();
-
-		NextScene = nullptr;
-		delete NextScene;
+		CurrentScene->Uninit();
+		delete CurrentScene;
 	}
+
+	CurrentScene = NextScene;
+	NextScene = nullptr;
+
+	CurrentScene->Init();
 }

@@ -6,7 +6,7 @@
 void DWCamera::Init()
 {
     Offset = DWVector2(0.0f, 0.0f);
-    bReuseableObject = true;
+    bReusableObject = true;
 }
 
 void DWCamera::Uninit()

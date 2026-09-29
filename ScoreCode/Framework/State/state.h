@@ -12,11 +12,13 @@ protected:
 
 public:
 	DWState(DWGameObject* owner, DWStateMachine* machine) : StateOwner(owner), StateMachine(machine) {}
+	virtual ~DWState() = default;
 
-	virtual void Init() = 0;
-	virtual void Enter() = 0;
-	virtual void Update() = 0;
-	virtual void Exit() = 0;
+	// •K—v‚È‚à‚Ì‚¾‚¯ override ‚·‚ê‚Î‚æ‚¢
+	virtual void Init() {}
+	virtual void Enter() {}
+	virtual void Update() {}
+	virtual void Exit() {}
 
 	DWGameObject* GetStateOwner() { return StateOwner; }
 	DWStateMachine* GetStateMachine() { return StateMachine; }

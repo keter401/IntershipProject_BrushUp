@@ -2,20 +2,18 @@
 #include "Framework\Components\BoxCollider\BoxCollider.h"
 #include "Scene\Scenes\scene.h"
 #include "Framework\gameObject.h"
-#include "Camera\camera.h"
 #include "Player\player.h"
 #include "Audio\audio.h"
 
 void DWCrawlingEnemy::Init()
 {
-	bDestory = false;
+	bDestroy = false;
 	Scale = Size;
 	Rotation = Rot;
-	SetHealth(Health);
+	ResetHealth(InitialHealth);
 	Tag = DWGameObject::ETag::ENEMY;
 
 	AddComponent<DWBoxCollider2D>(this);
-	RegistPendingComponents();
 
 	EnemyBodyColor = GetColor(255, 0, 255);
 
@@ -57,28 +55,15 @@ void DWCrawlingEnemy::DataUpdate()
 
 void DWCrawlingEnemy::Draw()
 {
-	DWVector2 offset(0.0f, 0.0f);
-	if (Scene != nullptr)
-	{
-		if (auto* cam = Scene->GetGameObject<DWCamera>())
-		{
-			offset = cam->GetOffset();
-		}
-	}
-
-	int topLeftX = static_cast<int>((Position.x - Scale.x * 0.5f) - offset.x);
-	int topLeftY = static_cast<int>((Position.y - Scale.y * 0.5f) - offset.y);
-	int bottomRightX = static_cast<int>((Position.x + Scale.x * 0.5f) - offset.x);
-	int bottomRightY = static_cast<int>((Position.y + Scale.y * 0.5f) - offset.y);
-
-	DrawBox(topLeftX, topLeftY, bottomRightX, bottomRightY, EnemyBodyColor, true);
+	const DWScreenRect rect = GetScreenRect();
+	DrawBox(rect.left, rect.top, rect.right, rect.bottom, EnemyBodyColor, true);
 
 #ifdef _DEBUG
 	const TCHAR* text;
 	text = _T("’n–Ê“G");
 	const unsigned int color = GetColor(255, 255, 255);
 
-	DrawString(topLeftX, topLeftY, text, color);
+	DrawString(rect.left, rect.top, text, color);
 
 	for (auto& component : ComponentsList)
 	{
@@ -99,7 +84,7 @@ void DWCrawlingEnemy::TakeDamaged(const float damage)
 	if (CurrentHealth <= 0.0f)
 	{
 		CurrentHealth = 0.0f;
-		bDestory = true;
+		bDestroy = true;
 
 		if(Audio != nullptr)
 		{
@@ -108,7 +93,7 @@ void DWCrawlingEnemy::TakeDamaged(const float damage)
 	}
 }
 
-void DWCrawlingEnemy::OnCollisionEnter2D(const DWGameObject* other)
+void DWCrawlingEnemy::OnCollisionEnter2D(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -128,7 +113,7 @@ void DWCrawlingEnemy::OnCollisionEnter2D(const DWGameObject* other)
 	}
 }
 
-void DWCrawlingEnemy::OnCollisionExit2D(const DWGameObject* other)
+void DWCrawlingEnemy::OnCollisionExit2D(DWGameObject* other)
 {
 
 }

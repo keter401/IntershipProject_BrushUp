@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>ScoreCode;DXlib</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -93,6 +94,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>ScoreCode;DXlib</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -108,6 +110,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>ScoreCode;DXlib</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -125,6 +128,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>ScoreCode;DXlib</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -146,6 +150,7 @@
     <ClCompile Include="ScoreCode\Framework\Components\BoxCollider\boxCollider.cpp" />
     <ClCompile Include="ScoreCode\Framework\Components\StateMachine\stateMachine.cpp" />
     <ClCompile Include="ScoreCode\Framework\gameObject.cpp" />
+    <ClCompile Include="ScoreCode\Framework\InGameCharacter\InGameCharacter.cpp" />
     <ClCompile Include="ScoreCode\Framework\Manager\BulletManager\bulletManager.cpp" />
     <ClCompile Include="ScoreCode\Framework\Manager\ColliderManager\colliderManager.cpp" />
     <ClCompile Include="ScoreCode\Framework\Manager\manager.cpp" />
@@ -156,9 +161,7 @@
     <ClCompile Include="ScoreCode\Player\PlayerState\Fall\playerFall.cpp" />
     <ClCompile Include="ScoreCode\Player\PlayerState\Idle\playerIdle.cpp" />
     <ClCompile Include="ScoreCode\Player\PlayerState\Jump\playerJump.cpp" />
-    <ClCompile Include="ScoreCode\Player\PlayerState\Land\playerLand.cpp" />
     <ClCompile Include="ScoreCode\Player\PlayerState\Move\playerMove.cpp" />
-    <ClCompile Include="ScoreCode\Player\PlayerState\Shot\playerShot.cpp" />
     <ClCompile Include="ScoreCode\Scene\sceneManager.cpp" />
     <ClCompile Include="ScoreCode\Scene\Scenes\GameScene\gameScene.cpp" />
     <ClCompile Include="ScoreCode\Scene\Scenes\ResultScene\resultScene.cpp" />
@@ -192,9 +195,7 @@
     <ClInclude Include="ScoreCode\Player\PlayerState\Fall\playerFall.h" />
     <ClInclude Include="ScoreCode\Player\PlayerState\Idle\playerIdle.h" />
     <ClInclude Include="ScoreCode\Player\PlayerState\Jump\playerJump.h" />
-    <ClInclude Include="ScoreCode\Player\PlayerState\Land\playerLand.h" />
     <ClInclude Include="ScoreCode\Player\PlayerState\Move\playerMove.h" />
-    <ClInclude Include="ScoreCode\Player\PlayerState\Shot\playerShot.h" />
     <ClInclude Include="ScoreCode\Scene\sceneManager.h" />
     <ClInclude Include="ScoreCode\Scene\Scenes\GameScene\gameScene.h" />
     <ClInclude Include="ScoreCode\Scene\Scenes\ResultScene\resultScene.h" />

@@ -7,7 +7,6 @@ class DWEnemy : public DWInGameCharacter
 protected:
 	unsigned int EnemyBodyColor = GetColor(0, 0, 0);
 
-	bool bActive = false;
 	bool bCanStomp = false;
 
 public:

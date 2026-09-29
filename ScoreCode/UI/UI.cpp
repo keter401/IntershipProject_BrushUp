@@ -4,7 +4,7 @@
 
 void DWUI::Init()
 {
-	bReuseableObject = true;
+	bReusableObject = true;
 	StageNumber = 1;
 }
 

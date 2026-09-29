@@ -21,11 +21,11 @@ public:
 	void Uninit();
 	void Update();
 
-    bool GetLeftBottom();
-    bool GetRightBottom();
-    bool GetActionBottom();
-    bool GetActionBottomTrigger();
-    bool GetActionBottomUp();
+    bool GetLeftButton();
+    bool GetRightButton();
+    bool GetActionButton();
+    bool GetActionButtonTrigger();
+    bool GetActionButtonUp();
 
     // --- Keyboard ---
 	bool GetKeyPress(const int keyCode);

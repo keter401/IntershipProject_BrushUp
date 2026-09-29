@@ -1,19 +1,18 @@
 #include "Framework\Manager\ColliderManager\colliderManager.h"
 #include "Scene\Scenes\scene.h"
-#include "Bullet\bullet.h"
-#include <unordered_set> 
+#include <unordered_map>
+#include <algorithm>
+#include <cmath>
 
 void DWColliderManager::Init()
 {
     Tag = DWManager::EManagerTag::ColliderManager;
-    CollideObjectList.clear();
-    PrevCollideObjectList.clear();
+    CurrentPairs.clear();
 }
 
 void DWColliderManager::Uninit()
 {
-    CollideObjectList.clear();
-    PrevCollideObjectList.clear();
+    CurrentPairs.clear();
 }
 
 void DWColliderManager::Update()
@@ -21,91 +20,128 @@ void DWColliderManager::Update()
     DWScene* scene = GetCurrentScene();
     if (scene == nullptr) return;
 
-    std::vector<DWGameObject*> all = scene->GetGameObjects<DWGameObject>();
-    std::unordered_set<DWGameObject*> alive(all.begin(), all.end());
+    const std::vector<DWGameObject*> all = scene->GetGameObjects<DWGameObject>();
+    const std::unordered_set<DWGameObject*> alive(all.begin(), all.end());
 
-    // 前フレームのペア。既に delete されたオブジェクトを含むペアは捨てる
+    // 前フレームのペア。既に delete されたオブジェクトを含むペアはここで捨てる
     // (Destroy() されたポインタを触るとダングリングになるため)
-    std::vector<DWGameObject*> oldPairs;
-    oldPairs.reserve(CollideObjectList.size());
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    std::vector<Pair> previousPairs;
+    previousPairs.reserve(CurrentPairs.size());
+    for (const Pair& p : CurrentPairs)
     {
-        DWGameObject* a = CollideObjectList[i];
-        DWGameObject* b = CollideObjectList[i + 1];
-        if (alive.count(a) != 0 && alive.count(b) != 0)
+        if (alive.count(p.first) != 0 && alive.count(p.second) != 0)
         {
-            oldPairs.push_back(a);
-            oldPairs.push_back(b);
+            previousPairs.push_back(p);
         }
     }
+    const PairSet previousSet(previousPairs.begin(), previousPairs.end());
 
-    std::vector<DWGameObject*> targets;
-    targets.reserve(all.size());
-    for (auto* go : all)
+    // 有効なコライダーを 1 回だけ集め、動く物 (プレイヤー/敵/弾) と動かない物 (ブロック) に分ける。
+    // 以前は総当たりの内側ループで毎回 GetComponent (= dynamic_cast) していた
+    std::vector<Entry> dynamics;
+    std::vector<Entry> statics;
+    dynamics.reserve(32);
+    statics.reserve(all.size());
+
+    for (DWGameObject* go : all)
     {
         if (go == nullptr) continue;
-        if (go->GetComponent<DWBoxCollider2D>())
-            targets.push_back(go);
+
+        DWBoxCollider2D* collider = go->GetComponent<DWBoxCollider2D>();
+        if (collider == nullptr || !collider->IsActive()) continue;
+
+        if (go->GetTag() == DWGameObject::ETag::BLOCK)
+        {
+            statics.push_back({ go, collider });
+        }
+        else
+        {
+            dynamics.push_back({ go, collider });
+        }
     }
 
-    const int list_Max = static_cast<int>(targets.size());
-    std::vector<DWGameObject*> newPairs;
-    newPairs.reserve(oldPairs.size());
-
-    for (int i = 0; i < list_Max - 1; ++i)
+    // ブロックを空間ハッシュへ登録。ブロックは動かないので O(n)
+    std::unordered_map<long long, std::vector<int>> grid;
+    grid.reserve(statics.size() * 2);
+    for (int i = 0; i < static_cast<int>(statics.size()); ++i)
     {
-        DWGameObject* objA = targets[i];
-        DWBoxCollider2D* ca = objA->GetComponent<DWBoxCollider2D>();
-
-        if (objA->GetTag() == DWGameObject::ETag::BULLET)
+        int minX, minY, maxX, maxY;
+        CellRange(statics[i].Collider, minX, minY, maxX, maxY);
+        for (int cy = minY; cy <= maxY; ++cy)
         {
-            DWBullet* bullet = dynamic_cast<DWBullet*>(objA);
-            if (bullet == nullptr || !bullet->IsActive())  continue;
-        }
-
-        for (int j = i + 1; j < list_Max; ++j)
-        {
-            DWGameObject* objB = targets[j];
-            if (objA->GetTag() == objB->GetTag()) continue;
-
-            DWBoxCollider2D* cb = objB->GetComponent<DWBoxCollider2D>();
-            if (ca == nullptr || cb == nullptr) continue;
-            if (!ca->IsActive() || !cb->IsActive()) continue;
-
-            if (objB->GetTag() == DWGameObject::ETag::BULLET)
+            for (int cx = minX; cx <= maxX; ++cx)
             {
-                DWBullet* bullet = dynamic_cast<DWBullet*>(objB);
-                if (bullet == nullptr || !bullet->IsActive())  continue;
-            }
-
-            if (objA->GetTag() == DWGameObject::ETag::PLAYER && objB->GetTag() == DWGameObject::ETag::BULLET ||
-                objA->GetTag() == DWGameObject::ETag::BULLET && objB->GetTag() == DWGameObject::ETag::PLAYER)
-                continue;
-
-            if (ObjectsOverlap(ca, cb))
-            {
-                DWGameObject* x = (objA < objB) ? objA : objB;
-                DWGameObject* y = (objA < objB) ? objB : objA;
-
-                newPairs.push_back(x);
-                newPairs.push_back(y);
+                grid[CellKey(cx, cy)].push_back(i);
             }
         }
     }
 
-    CollideObjectList = std::move(newPairs);
+    std::vector<Pair> newPairs;
+    newPairs.reserve(previousPairs.size() + 8);
+
+    // 動く物 × 動く物: 数が少ない (プレイヤー1 + 敵 + 弾10) ので総当たりで十分
+    for (size_t i = 0; i < dynamics.size(); ++i)
+    {
+        for (size_t j = i + 1; j < dynamics.size(); ++j)
+        {
+            const Entry& a = dynamics[i];
+            const Entry& b = dynamics[j];
+            if (!CanCollide(a.Object, b.Object)) continue;
+
+            if (a.Collider->IsCollidingWith(b.Collider))
+            {
+                newPairs.push_back(MakePair(a.Object, b.Object));
+            }
+        }
+    }
+
+    // 動く物 × ブロック: 自分の AABB が触れるセルに登録されたブロックだけ調べる
+    std::vector<int> candidates;
+    for (const Entry& d : dynamics)
+    {
+        int minX, minY, maxX, maxY;
+        CellRange(d.Collider, minX, minY, maxX, maxY);
+
+        candidates.clear();
+        for (int cy = minY; cy <= maxY; ++cy)
+        {
+            for (int cx = minX; cx <= maxX; ++cx)
+            {
+                auto it = grid.find(CellKey(cx, cy));
+                if (it == grid.end()) continue;
+                candidates.insert(candidates.end(), it->second.begin(), it->second.end());
+            }
+        }
+
+        // 複数セルにまたがるブロックが重複するので除去 (ソートすることで生成順も安定する)
+        std::sort(candidates.begin(), candidates.end());
+        candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+
+        for (int index : candidates)
+        {
+            const Entry& s = statics[index];
+            if (!CanCollide(d.Object, s.Object)) continue;
+
+            if (d.Collider->IsCollidingWith(s.Collider))
+            {
+                newPairs.push_back(MakePair(d.Object, s.Object));
+            }
+        }
+    }
+
+    CurrentPairs = std::move(newPairs);
+    const PairSet currentSet(CurrentPairs.begin(), CurrentPairs.end());
 
     // --- Enter / Stay ---
     // 前フレームにも存在したペアは Stay、初めて成立したペアは Enter
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    for (const Pair& p : CurrentPairs)
     {
-        DWGameObject* a = CollideObjectList[i];
-        DWGameObject* b = CollideObjectList[i + 1];
+        DWGameObject* a = p.first;
+        DWGameObject* b = p.second;
 
-        if (a == nullptr || b == nullptr) continue;
-        if (a->GetDestoryFlag() || b->GetDestoryFlag()) continue;
+        if (a->GetDestroyFlag() || b->GetDestroyFlag()) continue;
 
-        if (PairExistsIn(oldPairs, a, b))
+        if (previousSet.count(p) != 0)
         {
             a->OnCollisionStay2D(b);
             b->OnCollisionStay2D(a);
@@ -118,44 +154,62 @@ void DWColliderManager::Update()
     }
 
     // --- Exit (1) 前フレームにあって今フレームに無いペア ---
-    for (size_t i = 0; i + 1 < oldPairs.size(); i += 2)
+    for (const Pair& p : previousPairs)
     {
-        DWGameObject* a = oldPairs[i];
-        DWGameObject* b = oldPairs[i + 1];
-
-        if (!PairExistsIn(CollideObjectList, a, b))
+        if (currentSet.count(p) == 0)
         {
-            NotifyExit(a, b);
+            NotifyExit(p.first, p.second);
         }
     }
 
     // --- Exit (2) 今フレームのペアのうち、コールバック中に破棄/無効化されたもの ---
-    // これらは次フレームに持ち越さない (delete 済みポインタを触らない / 
+    // これらは次フレームに持ち越さない (delete 済みポインタを触らない /
     // プールから再利用された弾が「継続中」と誤判定されない)
-    std::vector<DWGameObject*> survivors;
-    survivors.reserve(CollideObjectList.size());
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    std::vector<Pair> survivors;
+    survivors.reserve(CurrentPairs.size());
+    for (const Pair& p : CurrentPairs)
     {
-        DWGameObject* a = CollideObjectList[i];
-        DWGameObject* b = CollideObjectList[i + 1];
-
-        if (IsPairEnded(a, b))
+        if (IsPairEnded(p.first, p.second))
         {
-            NotifyExit(a, b);
+            NotifyExit(p.first, p.second);
         }
         else
         {
-            survivors.push_back(a);
-            survivors.push_back(b);
+            survivors.push_back(p);
         }
     }
-    CollideObjectList = std::move(survivors);
+    CurrentPairs = std::move(survivors);
+}
+
+DWColliderManager::Pair DWColliderManager::MakePair(DWGameObject* a, DWGameObject* b)
+{
+    return (a < b) ? Pair(a, b) : Pair(b, a);
+}
+
+bool DWColliderManager::CanCollide(const DWGameObject* a, const DWGameObject* b)
+{
+    if (a == nullptr || b == nullptr) return false;
+
+    const DWGameObject::ETag tagA = a->GetTag();
+    const DWGameObject::ETag tagB = b->GetTag();
+
+    // 同じ種類同士 (ブロック×ブロック, 敵×敵 など) は判定しない
+    if (tagA == tagB) return false;
+
+    // プレイヤーの弾はプレイヤー自身に当たらない
+    if ((tagA == DWGameObject::ETag::PLAYER && tagB == DWGameObject::ETag::BULLET) ||
+        (tagA == DWGameObject::ETag::BULLET && tagB == DWGameObject::ETag::PLAYER))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 bool DWColliderManager::IsPairEnded(DWGameObject* a, DWGameObject* b)
 {
     if (a == nullptr || b == nullptr) return true;
-    if (a->GetDestoryFlag() || b->GetDestoryFlag()) return true;
+    if (a->GetDestroyFlag() || b->GetDestroyFlag()) return true;
 
     DWBoxCollider2D* ca = a->GetComponent<DWBoxCollider2D>();
     DWBoxCollider2D* cb = b->GetComponent<DWBoxCollider2D>();
@@ -167,14 +221,32 @@ bool DWColliderManager::IsPairEnded(DWGameObject* a, DWGameObject* b)
 
 void DWColliderManager::NotifyExit(DWGameObject* a, DWGameObject* b)
 {
-    if (a != nullptr && !a->GetDestoryFlag()) a->OnCollisionExit2D(b);
-    if (b != nullptr && !b->GetDestoryFlag()) b->OnCollisionExit2D(a);
+    if (a != nullptr && !a->GetDestroyFlag()) a->OnCollisionExit2D(b);
+    if (b != nullptr && !b->GetDestroyFlag()) b->OnCollisionExit2D(a);
+}
+
+long long DWColliderManager::CellKey(int cx, int cy)
+{
+    // 負のセル座標も扱えるよう、上位 32bit に x、下位 32bit に y を詰める
+    const unsigned long long ux = static_cast<unsigned int>(cx);
+    const unsigned long long uy = static_cast<unsigned int>(cy);
+    return static_cast<long long>((ux << 32) | uy);
+}
+
+void DWColliderManager::CellRange(const DWBoxCollider2D* collider, int& minX, int& minY, int& maxX, int& maxY)
+{
+    const DWVector2 pos = collider->GetBoundingBoxPosition();
+    const DWVector2 half = collider->GetBoundingBoxScale() * 0.5f;
+
+    minX = static_cast<int>(std::floor((pos.x - half.x) / CellSize));
+    minY = static_cast<int>(std::floor((pos.y - half.y) / CellSize));
+    maxX = static_cast<int>(std::floor((pos.x + half.x) / CellSize));
+    maxY = static_cast<int>(std::floor((pos.y + half.y) / CellSize));
 }
 
 void DWColliderManager::ClearList()
 {
-    CollideObjectList.clear();
-    PrevCollideObjectList.clear();
+    CurrentPairs.clear();
 }
 
 std::vector<DWGameObject*> DWColliderManager::GetCollidingObjects(DWGameObject* obj) const
@@ -182,74 +254,22 @@ std::vector<DWGameObject*> DWColliderManager::GetCollidingObjects(DWGameObject* 
     std::vector<DWGameObject*> out;
     if (obj == nullptr) return out;
 
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
+    for (const Pair& p : CurrentPairs)
     {
-        DWGameObject* a = CollideObjectList[i];
-        DWGameObject* b = CollideObjectList[i + 1];
-        if (a == obj) out.push_back(b);
-        else if (b == obj) out.push_back(a);
+        if (p.first == obj) out.push_back(p.second);
+        else if (p.second == obj) out.push_back(p.first);
     }
     return out;
-}
-
-int DWColliderManager::FindPairIndex(DWGameObject* objA, DWGameObject* objB) const
-{
-
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2)
-    {
-        if (CollideObjectList[i] == objA && CollideObjectList[i + 1] == objB)
-            return static_cast<int>(i);
-    }
-    return -1;
-}
-
-void DWColliderManager::PushPairNormalized(DWGameObject* x, DWGameObject* y)
-{
-    CollideObjectList.push_back(x);
-    CollideObjectList.push_back(y);
-}
-
-bool DWColliderManager::ObjectsOverlap(const DWBoxCollider2D* c1, const DWBoxCollider2D* c2)
-{
-    if (c1 == nullptr || c2 == nullptr) return false;
-
-    const DWVector2 pos1 = c1->GetBoundingBoxPosition();
-    const DWVector2 scale1 = c1->GetBoundingBoxScale();
-    const DWVector2 pos2 = c2->GetBoundingBoxPosition();
-    const DWVector2 scale2 = c2->GetBoundingBoxScale();
-
-    const float halfW1 = scale1.x * 0.5f, halfH1 = scale1.y * 0.5f;
-    const float halfW2 = scale2.x * 0.5f, halfH2 = scale2.y * 0.5f;
-
-    const bool overlapX = std::fabs(pos1.x - pos2.x) <= (halfW1 + halfW2);
-    const bool overlapY = std::fabs(pos1.y - pos2.y) <= (halfH1 + halfH2);
-    return overlapX && overlapY;
-}
-
-bool DWColliderManager::PairExistsIn(
-    const std::vector<DWGameObject*>& flatList,
-    DWGameObject* a, DWGameObject* b) const
-{
-    DWGameObject* x = (a < b) ? a : b;
-    DWGameObject* y = (a < b) ? b : a;
-
-    for (size_t i = 0; i + 1 < flatList.size(); i += 2)
-    {
-        if (flatList[i] == x && flatList[i + 1] == y) return true;
-    }
-    return false;
 }
 
 bool DWColliderManager::IsCollidingWithTagThisFrame(DWGameObject* obj, DWGameObject::ETag tag) const
 {
     if (obj == nullptr) return false;
 
-    for (size_t i = 0; i + 1 < CollideObjectList.size(); i += 2) 
+    for (const Pair& p : CurrentPairs)
     {
-        DWGameObject* a = CollideObjectList[i];
-        DWGameObject* b = CollideObjectList[i + 1];
-        if (a == obj && b && b->GetTag() == tag) return true;
-        if (b == obj && a && a->GetTag() == tag) return true;
+        if (p.first == obj && p.second != nullptr && p.second->GetTag() == tag) return true;
+        if (p.second == obj && p.first != nullptr && p.first->GetTag() == tag) return true;
     }
     return false;
 }

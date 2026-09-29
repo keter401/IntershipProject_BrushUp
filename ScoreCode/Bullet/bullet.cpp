@@ -2,7 +2,6 @@
 #include "Framework\Manager\BulletManager\bulletManager.h"
 #include "Framework\Manager\ColliderManager\colliderManager.h"
 #include "Scene\Scenes\scene.h"
-#include "Camera\camera.h"
 
 DWBullet::DWBullet()
 {
@@ -10,14 +9,12 @@ DWBullet::DWBullet()
 	Rotation = Rot;
 	Tag = DWGameObject::ETag::BULLET;
 	BulletColor = GetColor(100, 100, 255);
-    bReuseableObject = true;
+    bReusableObject = true;
 }
 
 void DWBullet::Init()
 {
     AddComponent<DWBoxCollider2D>(this);
-
-    RegistPendingComponents();
 }
 
 void DWBullet::Uninit()
@@ -34,7 +31,7 @@ void DWBullet::Update()
     SetPosition(pos);
 
     Life--;
-    if (Life <= 0.0f)
+    if (Life <= 0)
     {
         if (Pool != nullptr)
         {
@@ -62,14 +59,7 @@ void DWBullet::Draw()
 {
     if (!bActive) return;
 
-    DWVector2 offset(0.0f, 0.0f);
-    if (Scene != nullptr)
-    {
-        if (auto* cam = Scene->GetGameObject<DWCamera>())
-        {
-            offset = cam->GetOffset();
-        }
-    }
+    const DWVector2 offset = GetCameraOffset();
 
     int posX = static_cast<int>(Position.x - offset.x);
     int posY = static_cast<int>(Position.y - offset.y);
@@ -89,7 +79,7 @@ void DWBullet::Draw()
 #endif
 }
 
-void DWBullet::OnCollisionEnter2D(const DWGameObject* other)
+void DWBullet::OnCollisionEnter2D(DWGameObject* other)
 {
     if (!bActive) return;
 
@@ -108,7 +98,7 @@ void DWBullet::OnCollisionEnter2D(const DWGameObject* other)
     }
 }
 
-void DWBullet::OnCollisionExit2D(const DWGameObject* other)
+void DWBullet::OnCollisionExit2D(DWGameObject* other)
 {
 
 }

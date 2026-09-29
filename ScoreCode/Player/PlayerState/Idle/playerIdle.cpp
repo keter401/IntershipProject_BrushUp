@@ -19,7 +19,7 @@ void DWPlayerIdle::Update()
 	DWInput* input = Player->GetInput();
 	if (input == nullptr) return;
 
-	if (input->GetLeftBottom() || input->GetRightBottom())
+	if (input->GetLeftButton() || input->GetRightButton())
 	{
 		Player->SetCurrentState(DWPlayer::EPlayerState::Move);
 		return;
@@ -29,7 +29,7 @@ void DWPlayerIdle::Update()
 		Player->SetMoveSpeed(DWVector2(0.0f, Player->GetMoveSpeed().y));
 	}
 
-	if (input->GetActionBottom())
+	if (input->GetActionButton())
 	{
 		Player->SetCurrentState(DWPlayer::EPlayerState::Jump);
 		DWAudio* audio = Player->GetAudio();

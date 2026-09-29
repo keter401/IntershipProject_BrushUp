@@ -1,10 +1,6 @@
 #include "BoxCollider.h"
-#include "Scene\Scenes\scene.h"
-#include "Enemy\enemy.h"
-#include "Framework\Manager\ColliderManager\colliderManager.h"
-#include "Camera\camera.h"
-
-DWVector2 DebugPos;
+#include "Framework\gameObject.h"
+#include <algorithm>
 
 void DWBoxCollider2D::Init()
 {  
@@ -31,8 +27,6 @@ void DWBoxCollider2D::Update()
     if (!owner) return;
     PrevBoundingBoxPosition = BoundingBoxPosition;
     BoundingBoxPosition = owner->GetPosition();
-	DebugPos = BoundingBoxPosition;
-
 }
 
 void DWBoxCollider2D::DataUpdate()
@@ -43,15 +37,7 @@ void DWBoxCollider2D::DataUpdate()
     PrevBoundingBoxPosition = BoundingBoxPosition;
     BoundingBoxPosition = owner->GetPosition();
 
-    DWVector2 offset(0.0f, 0.0f);
-	DWScene* scene = owner->GetScene();
-    if (scene != nullptr)
-    {
-        if (auto* cam = scene->GetGameObject<DWCamera>())
-        {
-            offset = cam->GetOffset();
-        }
-    }
+    const DWVector2 offset = owner->GetCameraOffset();
 
     topLeftX = static_cast<int>((BoundingBoxPosition.x - BoundingBoxScale.x * 0.5f) - offset.x);
     topLeftY = static_cast<int>((BoundingBoxPosition.y - BoundingBoxScale.y * 0.5f) - offset.y);
@@ -149,48 +135,8 @@ bool DWBoxCollider2D::IsStomped(const DWBoxCollider2D* other) const
 
 bool DWBoxCollider2D::DidStomp(const DWBoxCollider2D* other) const
 {
-    if (other == nullptr) return false;
-
-    const DWVector2 aPos = BoundingBoxPosition;
-    const DWVector2 aPrev = PrevBoundingBoxPosition;
-    const DWVector2 aSize = BoundingBoxScale;
-
-    const DWVector2 bPos = other->GetBoundingBoxPosition();
-    const DWVector2 bPrev = other->PrevBoundingBoxPosition;
-    const DWVector2 bSize = other->GetBoundingBoxScale();
-
-    const float aHalfW = aSize.x * 0.5f, aHalfH = aSize.y * 0.5f;
-    const float bHalfW = bSize.x * 0.5f, bHalfH = bSize.y * 0.5f;
-
-    const float aTop = aPos.y - aHalfH, aBottom = aPos.y + aHalfH;
-    const float aLeft = aPos.x - aHalfW, aRight = aPos.x + aHalfW;
-
-    const float bTop = bPos.y - bHalfH, bBottom = bPos.y + bHalfH;
-    const float bLeft = bPos.x - bHalfW, bRight = bPos.x + bHalfW;
-
-    const float aBottomPrev = aPrev.y + aHalfH;
-    const float bTopPrev = bPrev.y - bHalfH;
-
-    const float overlapX = std::min(aRight, bRight) - std::max(aLeft, bLeft);
-    const float minRequiredOverlapX = std::min(aSize.x, bSize.x) * 0.3f;
-    if (overlapX < minRequiredOverlapX) return false;
-
-    const float penX = std::min(aRight - bLeft, bRight - aLeft);
-    const float penY = std::min(aBottom - bTop, bBottom - aTop);
-
-    if (penX < penY)
-    {
-        return false;
-    }
-
-    const float eps = std::min(aSize.y, bSize.y) * 0.15f;
-
-    if (!(aBottomPrev <= bTopPrev + eps && aBottom >= bTop - eps))
-    {
-        return false;
-    }
-
-    return true;
+    // 「自分が other を踏んだ」は「other が自分に踏まれた」と同じ判定。鏡像コードの重複を解消
+    return other != nullptr && other->IsStomped(this);
 }
 
 void DWBoxCollider2D::SetDebugLineColor(bool isColliding)

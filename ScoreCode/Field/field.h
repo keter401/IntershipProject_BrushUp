@@ -8,13 +8,13 @@
 class DWField : public DWManager
 {
 private:
-    const int StageWidth = 15;
-    const int StageHeight = 20;
-    const int TileSize = 50;
-    const int OriginX = 200;
-    const int OriginY = 60;
-    const int RandomStagePick = 5;
-    const int GoalWaitFrames = 60;
+    static constexpr int StageWidth = 15;
+    static constexpr int StageHeight = 20;
+    static constexpr int TileSize = 50;
+    static constexpr int OriginX = 200;
+    static constexpr int OriginY = 60;
+    static constexpr int RandomStagePick = 5;
+    static constexpr int GoalWaitFrames = 60;
 
     bool bGoal = false;
     int GoalReachCounter = 0;
@@ -33,8 +33,6 @@ private:
 
     void SpawnAllStages();
     void SpawnStageObjects(const std::string& stageName, int stageIndex);
-
-    void EnsurePlayerIfAbsent();
 
     void ClearFieldLayer();
 

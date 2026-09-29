@@ -6,17 +6,17 @@ class DWBulletManager;
 
 class DWBullet : public DWGameObject {
 private:
-    const DWVector2 Size = ObjectSize * 0.5f;
-    const DWVector2 Rot = DWVector2{ 0.0f, 0.0f };
-    const DWVector2 Velocity = DWVector2{ 0.0f, 15.0f };
-    const float MaxLife = 120.0f;
+    static constexpr DWVector2 Size = ObjectSize * 0.5f;
+    static constexpr DWVector2 Rot = DWVector2{ 0.0f, 0.0f };
+    static constexpr DWVector2 Velocity = DWVector2{ 0.0f, 15.0f };
+    static constexpr int MaxLife = 120;   // ÉtÉåÅ[ÉÄêî
 
     unsigned int BulletColor;
 
     bool bActive = false;
     DWBulletManager* Pool = nullptr;
     DWVector2 Vel = Velocity;
-    float Life = 0.0f;
+    int Life = 0;
 
 	int Number = 0;
 
@@ -29,8 +29,8 @@ public:
     void DataUpdate() override;
     void Draw() override;
 
-    void OnCollisionEnter2D(const DWGameObject* other) override;
-    void OnCollisionExit2D(const DWGameObject* other) override;
+    void OnCollisionEnter2D(DWGameObject* other) override;
+    void OnCollisionExit2D(DWGameObject* other) override;
 
     void Activate(DWBulletManager* pool, const DWVector2& pos);
     void Deactivate();

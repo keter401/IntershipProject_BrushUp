@@ -2,9 +2,8 @@
 #include "Framework\gameObject.h"
 #include "Framework\Manager\manager.h"
 
-#define MAX_LAYER 3
-
 class DWSceneManager;
+class DWCamera;
 
 class DWScene
 {
@@ -23,8 +22,11 @@ public:
 		UI = 2,
 	};
 
+	static constexpr int MaxLayer = 3;
+
 protected:
-	std::list<DWGameObject*> GameObjectList[MAX_LAYER];
+	// GameObject / Manager はシーンが所有し、Uninit() で delete する
+	std::list<DWGameObject*> GameObjectList[MaxLayer];
 	std::list<DWManager*> ManagerList;
 	DWSceneManager* SceneManager;
 		
@@ -32,25 +34,39 @@ protected:
 
 	DWInput* Input;
 
+	// 描画・当たり判定が参照するメインカメラ。毎フレーム GetGameObject<DWCamera>() で
+	// 全オブジェクトを dynamic_cast で走査していたのをやめ、シーンが1つ持つ
+	DWCamera* MainCamera = nullptr;
+
 public:
 	DWScene(DWSceneManager* sceneManager, DWInput* input) : SceneManager(sceneManager), Input(input) 
 	{
 		CurrentSceneName = TITLESCENE;
 	}
+	virtual ~DWScene() = default;
 
-	virtual void Init();
-	void Uninit();
-	void Update();
-	void Draw();
+	// 派生シーンはオブジェクト構築 (Init)、遷移条件 (Update)、固有描画 (Draw) を override する。
+	// Update / Draw を override したときは基底も呼ぶこと
+	virtual void Init() {}
+	virtual void Uninit();
+	virtual void Update();
+	virtual void Draw();
 	
 	DWSceneManager* GetSceneManager() { return SceneManager; }
 	ESceneName GetSceneName() { return CurrentSceneName; }
+	DWInput* GetInput() const { return Input; }
+
+	// Camera
+	void SetMainCamera(DWCamera* camera) { MainCamera = camera; }
+	DWCamera* GetMainCamera() const { return MainCamera; }
+	// メインカメラのスクロール量。カメラ未設定なら (0, 0)
+	DWVector2 GetCameraOffset() const;
 
 	// Manager
 	template <typename T>
-	T* AddManager(DWScene* scene)
+	T* AddManager()
 	{
-		T* managerObject = new T(scene);
+		T* managerObject = new T(this);
 		managerObject->Init();
 		ManagerList.push_back(managerObject);
 
@@ -71,22 +87,20 @@ public:
 	}
 
 	// GameObject
+	// 生成 → シーン/入力/位置の設定 → Init → コンポーネント登録 をこの 1 経路に統一
 	template <typename T>
-	T* AddGameObject(const int Layer, DWScene* scene, DWVector2 pos = DWVector2( 0.0f, 0.0f ))
+	T* AddGameObject(const int layer, const DWVector2& pos = DWVector2(0.0f, 0.0f))
 	{
 		T* gameObject = new T();
-		gameObject->SetScene(scene);
-		gameObject->Init();
-		gameObject->SetPosition(pos);
-		GameObjectList[Layer].push_back(gameObject);
-
+		AddGameObject(gameObject, layer, pos);
 		return gameObject;
 	}
-	void AddGameObject(DWGameObject* obj, int layer);
+	void AddGameObject(DWGameObject* obj, int layer, const DWVector2& pos = DWVector2(0.0f, 0.0f));
+
 	template <typename T>
 	T* GetGameObject()
 	{
-		for (int i = 0; i < MAX_LAYER; i++)
+		for (int i = 0; i < MaxLayer; i++)
 		{
 			if (GameObjectList[i].empty()) continue;
 			for (auto obj : GameObjectList[i])
@@ -104,7 +118,7 @@ public:
 	std::vector<T*> GetGameObjects()
 	{
 		std::vector<T*> finds;
-		for (int i = 0; i < MAX_LAYER; i++)
+		for (int i = 0; i < MaxLayer; i++)
 		{
 			if (GameObjectList[i].empty()) continue;
 			for (auto obj : GameObjectList[i])
@@ -120,7 +134,7 @@ public:
 	}
 	DWGameObject* GetGameObjectByTag(const DWGameObject::ETag tag)
 	{
-		for (int i = 0; i < MAX_LAYER; i++)
+		for (int i = 0; i < MaxLayer; i++)
 		{
 			if (GameObjectList[i].empty()) continue;
 			for (auto obj : GameObjectList[i])
@@ -136,7 +150,7 @@ public:
 	std::vector<DWGameObject*> GetGameObjectsByTag(const DWGameObject::ETag tag)
 	{
 		std::vector<DWGameObject*> finds;
-		for (int i = 0; i < MAX_LAYER; i++)
+		for (int i = 0; i < MaxLayer; i++)
 		{
 			if (GameObjectList[i].empty()) continue;
 			for (auto obj : GameObjectList[i])

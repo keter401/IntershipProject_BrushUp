@@ -5,28 +5,20 @@
 #include "Player\PlayerState\Fall\playerFall.h"
 #include "Player\PlayerState\Jump\playerJump.h"
 #include "Player\PlayerState\Move\playerMove.h"
-#include "Player\PlayerState\Land\playerLand.h"
-#include "Player\PlayerState\Shot\playerShot.h"
 #include "Framework\Components\StateMachine\stateMachine.h"
 #include "Scene\Scenes\scene.h"
 #include "Framework\Manager\ColliderManager\colliderManager.h"
 #include "Framework\Manager\BulletManager\bulletManager.h"
-#include "Camera\camera.h"
 #include "Enemy\enemy.h"
 #include "Audio\audio.h"
 
 DWPlayer::DWPlayer()
 {
-	bIsFaceRight = true;
-	AmmoCount = AmmoMax;
-	MoveDirection = DWVector2(0.0f, 0.0f);
 	Rotation = Rot;
 	Scale = Size;
-	SetHealth(MaxHealth);
+	ResetHealth(PlayerMaxHealth);
 	Tag = DWGameObject::ETag::PLAYER;
-	PlayerBodyColor = DefaultColor;
-	bReuseableObject = true;
-	bInvincibleFadeUp = false;
+	bReusableObject = true;
 }
 
 void DWPlayer::Init()
@@ -36,31 +28,25 @@ void DWPlayer::Init()
 	
 	if (stateMachine != nullptr)
 	{
-		PlayerStatesList.resize(6);
+		PlayerStatesList.assign(EPlayerState::StateCount, nullptr);
 		PlayerStatesList[EPlayerState::Idle] = new DWPlayerIdle(this, stateMachine);
 		PlayerStatesList[EPlayerState::Move] = new DWPlayerMove(this, stateMachine);
 		PlayerStatesList[EPlayerState::Jump] = new DWPlayerJump(this, stateMachine);
-		PlayerStatesList[EPlayerState::Shot] = new DWPlayerShot(this, stateMachine);
 		PlayerStatesList[EPlayerState::Fall] = new DWPlayerFall(this, stateMachine);
-		PlayerStatesList[EPlayerState::Land] = new DWPlayerLand(this, stateMachine);
 		CurrentState = EPlayerState::Fall;
 		stateMachine->ChangeState(PlayerStatesList[CurrentState]);
 	}
 
 	ShotCoolDownCounter = 0;
-	ShotCoolDownFrame = 5;
-
-	RegistPendingComponents();
-
-	if (Scene != nullptr)
-	{
-		Scene->AddManager<DWBulletManager>(Scene);
-	}
 }
 
 void DWPlayer::Uninit()
 {
-
+	for (DWState* state : PlayerStatesList)
+	{
+		delete state;
+	}
+	PlayerStatesList.clear();
 }
 
 void DWPlayer::Update()
@@ -115,7 +101,7 @@ void DWPlayer::Update()
 
 	if(CurrentState == EPlayerState::Jump || CurrentState == EPlayerState::Fall)
 	{
-		if (Input->GetActionBottom())
+		if (Input->GetActionButton())
 		{
 			ShotCoolDownCounter++;
 		}
@@ -143,21 +129,8 @@ void DWPlayer::DataUpdate()
 
 void DWPlayer::Draw()
 {
-	DWVector2 offset(0.0f, 0.0f);
-	if (Scene != nullptr)
-	{
-		if (auto* cam = Scene->GetGameObject<DWCamera>())
-		{
-			offset = cam->GetOffset();
-		}
-	}
-
-	int topLeftX = static_cast<int>((Position.x - Scale.x * 0.5f) - offset.x);
-	int topLeftY = static_cast<int>((Position.y - Scale.y * 0.5f) - offset.y);
-	int bottomRightX = static_cast<int>((Position.x + Scale.x * 0.5f) - offset.x);
-	int bottomRightY = static_cast<int>((Position.y + Scale.y * 0.5f) - offset.y);
-
-    DrawBox(topLeftX, topLeftY, bottomRightX, bottomRightY, PlayerBodyColor, true);
+	const DWScreenRect rect = GetScreenRect();
+	DrawBox(rect.left, rect.top, rect.right, rect.bottom, PlayerBodyColor, true);
 
 #ifdef _DEBUG
     for(auto& component : ComponentsList)
@@ -175,10 +148,8 @@ void DWPlayer::Draw()
 			case EPlayerState::Idle: return L"Idle";
 			case EPlayerState::Move: return L"Move";
 			case EPlayerState::Jump: return L"Jump";
-			case EPlayerState::Shot: return L"Shot";
 			case EPlayerState::Fall: return L"Fall";
-			case EPlayerState::Land: return L"Land";
-			default: return L"Unkone";
+			default: return L"Unknown";
 			}
 		};
 
@@ -197,8 +168,9 @@ void DWPlayer::Draw()
     const TCHAR* previousStateText = nullptr;
 	previousStateText = previousStateNarrowText.c_str();
 
-    DrawString(10, 30, currentStateText, textColor);
-    DrawString(10, 10, previousStateText, textColor);
+	// UI (HP: y=10, Ammo: y=30) と重ならない位置に出す
+    DrawString(10, 70, previousStateText, textColor);
+    DrawString(10, 90, currentStateText, textColor);
 	
 	TCHAR* text;
 	TCHAR buffer[64];
@@ -211,7 +183,7 @@ void DWPlayer::Draw()
 	buffer[0] = '\0';
 	_stprintf_s(buffer, _T("Ammo : %d"), AmmoCount);
 	text = buffer;
-	DrawString(10, 110, text, textColor);
+	DrawString(10, 130, text, textColor);
 
 #endif
 }
@@ -245,6 +217,28 @@ void DWPlayer::PlayerShot()
 
 	bulletMgr->Spawn(Position);
 	AmmoCount -= 1;
+}
+
+bool DWPlayer::TryShoot()
+{
+	if (AmmoCount <= 0) return false;
+	if (ShotCoolDownCounter < ShotCoolDownFrame) return false;
+
+	PlayerShot();
+	ShotRebound();
+
+	if (Audio != nullptr)
+	{
+		Audio->PlayAudio(DWAudio::ESoundType::PlayerShoot);
+	}
+	return true;
+}
+
+void DWPlayer::OnLanded()
+{
+	AmmoReload();
+	MoveSpeed.y = 0.0f;
+	SetCurrentState(EPlayerState::Idle);
 }
 
 void DWPlayer::GravityForce()
@@ -292,36 +286,26 @@ void DWPlayer::DamagedByOther(float damage, const DWGameObject* other)
 	if (other == nullptr) return;
 	if (bIsInvincible) return;
 
+	// 相手から離れる方向へノックバックしてから、通常のダメージ処理
 	TreadRebound();
 
 	if (other->GetPosition().x > Position.x)	MoveSpeed.x -= DamagedReboundPower;
 	else										MoveSpeed.x += DamagedReboundPower;
 
-	CurrentHealth -= damage;
-	bIsInvincible = true;
-
-	if (CurrentHealth < 0.0f)
-	{
-		CurrentHealth = 0.0f;
-	}
-
-	if (Audio != nullptr)
-	{
-		Audio->PlayAudio(DWAudio::ESoundType::PlayerDamaged);
-	}
+	TakeDamaged(damage);
 }
 
-void DWPlayer::OnCollisionEnter2D(const DWGameObject* other)
+void DWPlayer::OnCollisionEnter2D(DWGameObject* other)
 {
 	HandleContact(other);
 }
 
-void DWPlayer::OnCollisionStay2D(const DWGameObject* other)
+void DWPlayer::OnCollisionStay2D(DWGameObject* other)
 {
 	HandleContact(other);
 }
 
-void DWPlayer::HandleContact(const DWGameObject* other)
+void DWPlayer::HandleContact(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -334,8 +318,7 @@ void DWPlayer::HandleContact(const DWGameObject* other)
 		}
 		case DWGameObject::ETag::ENEMY:
 		{
-			DWEnemy* enemy = static_cast<DWEnemy*>(const_cast<DWGameObject*>(other));
-			if (enemy == nullptr) return;
+			DWEnemy* enemy = static_cast<DWEnemy*>(other);
 
 			if (enemy->CanStomp())
 			{
@@ -369,7 +352,7 @@ void DWPlayer::HandleContact(const DWGameObject* other)
 	}
 }
 
-void DWPlayer::OnCollisionExit2D(const DWGameObject* other)
+void DWPlayer::OnCollisionExit2D(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -405,55 +388,27 @@ void DWPlayer::OnCollisionExit2D(const DWGameObject* other)
 
 void DWPlayer::PushBack(const DWGameObject* other)
 {
-	if (other == nullptr) return;
-
-	DWVector2 objPos = other->GetPosition();
-	const DWVector2 objHalfScale = other->GetScale() * 0.5f;
-	const DWVector2 halfSize = Scale * 0.5f;
-
-	const float distanceX = objPos.x - Position.x;
-	const float distanceY = objPos.y - Position.y;
-
-	const float px = (halfSize.x + objHalfScale.x) - std::abs(distanceX);
-	const float py = (halfSize.y + objHalfScale.y) - std::abs(distanceY);
-
-	if (px <= 0.0f || py <= 0.0f) return;
-
-	DWBoxCollider2D* boxCollider = GetComponent<DWBoxCollider2D>();
-	DWVector2 pos = Position;
-
-	if (px < py)
+	switch (ResolvePenetration(other))
 	{
-		if (distanceX < 0.0f)
-		{
-			pos.x = other->GetPosition().x + (objHalfScale.x + halfSize.x);
-		}
-		else
-		{
-			pos.x = other->GetPosition().x - (objHalfScale.x + halfSize.x);
-		}
+	case EPushBackSide::Left:
+	case EPushBackSide::Right:
 		MoveSpeed.x = 0.0f;
-	}
-	else
-	{
-		if (distanceY < 0.0f)
-		{
-			pos.y = other->GetPosition().y + (objHalfScale.y + halfSize.y);
-			MoveSpeed.y = 0.0f;
-		}
-		else
-		{
-			pos.y = other->GetPosition().y - (objHalfScale.y + halfSize.y);
+		break;
 
- 			if(MoveSpeed.y >= 0.0f)
-			{
-				SetCurrentState(EPlayerState::Land);
-			}
+	case EPushBackSide::Bottom:
+		// 頭をぶつけた
+		MoveSpeed.y = 0.0f;
+		break;
+
+	case EPushBackSide::Top:
+		// 上から乗った (上昇中に側面をかすめただけなら着地扱いにしない)
+		if (MoveSpeed.y >= 0.0f)
+		{
+			OnLanded();
 		}
-	}
-	Position = pos;
-	if(boxCollider != nullptr)
-	{
-		boxCollider->SetBoundingBoxPosition(pos);
+		break;
+
+	default:
+		break;
 	}
 }

@@ -121,12 +121,6 @@
     <Filter Include="ヘッダー ファイル\GameObjects\Player\PlayerState\Fall">
       <UniqueIdentifier>{e2b37e66-42ff-4def-9bbf-a35342d3b3c7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\GameObjects\Player\PlayerState\Land">
-      <UniqueIdentifier>{23575ac8-51fa-4fa1-a92a-78530b61e418}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\GameObjects\Player\PlayerState\Shot">
-      <UniqueIdentifier>{37cebdd0-1591-4a25-b09c-b0f86de368bd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\GameObjects\Block">
       <UniqueIdentifier>{0f12db7e-dd74-4ecc-b815-819268bfe727}</UniqueIdentifier>
     </Filter>
@@ -160,14 +154,8 @@
     <Filter Include="ソース ファイル\GameObjects\Player\PlayerState\Jump">
       <UniqueIdentifier>{1d5dab4d-6712-4cce-88be-04974dbbfd03}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\GameObjects\Player\PlayerState\Land">
-      <UniqueIdentifier>{0bc3db79-5bae-4bef-86ca-6a8f116189a2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\GameObjects\Player\PlayerState\Fall">
       <UniqueIdentifier>{dc6176f2-d040-4d8d-9626-d8e59e0fc11d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\GameObjects\Player\PlayerState\Shot">
-      <UniqueIdentifier>{baf38054-f7be-4b40-9165-924209b49ac3}</UniqueIdentifier>
     </Filter>
     <Filter Include="ソース ファイル\GameObjects\Block">
       <UniqueIdentifier>{dc36d094-b339-43e0-a869-7f6d7edaa050}</UniqueIdentifier>
@@ -240,12 +228,6 @@
     <ClCompile Include="ScoreCode\Player\PlayerState\Jump\playerJump.cpp">
       <Filter>ソース ファイル\GameObjects\Player\PlayerState\Jump</Filter>
     </ClCompile>
-    <ClCompile Include="ScoreCode\Player\PlayerState\Shot\playerShot.cpp">
-      <Filter>ソース ファイル\GameObjects\Player\PlayerState\Shot</Filter>
-    </ClCompile>
-    <ClCompile Include="ScoreCode\Player\PlayerState\Land\playerLand.cpp">
-      <Filter>ソース ファイル\GameObjects\Player\PlayerState\Land</Filter>
-    </ClCompile>
     <ClCompile Include="ScoreCode\Player\PlayerState\Fall\playerFall.cpp">
       <Filter>ソース ファイル\GameObjects\Player\PlayerState\Fall</Filter>
     </ClCompile>
@@ -268,6 +250,9 @@
       <Filter>ソース ファイル\GameObjects\Enemy\CrawlingEnemy</Filter>
     </ClCompile>
     <ClCompile Include="ScoreCode\Framework\gameObject.cpp">
+      <Filter>ソース ファイル\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="ScoreCode\Framework\InGameCharacter\InGameCharacter.cpp">
       <Filter>ソース ファイル\Framework</Filter>
     </ClCompile>
     <ClCompile Include="ScoreCode\Framework\vector2.cpp">
@@ -359,14 +344,8 @@
     <ClInclude Include="ScoreCode\Player\PlayerState\Jump\playerJump.h">
       <Filter>ヘッダー ファイル\GameObjects\Player\PlayerState\Jump</Filter>
     </ClInclude>
-    <ClInclude Include="ScoreCode\Player\PlayerState\Land\playerLand.h">
-      <Filter>ヘッダー ファイル\GameObjects\Player\PlayerState\Land</Filter>
-    </ClInclude>
     <ClInclude Include="ScoreCode\Player\PlayerState\Move\playerMove.h">
       <Filter>ヘッダー ファイル\GameObjects\Player\PlayerState\Move</Filter>
-    </ClInclude>
-    <ClInclude Include="ScoreCode\Player\PlayerState\Shot\playerShot.h">
-      <Filter>ヘッダー ファイル\GameObjects\Player\PlayerState\Shot</Filter>
     </ClInclude>
     <ClInclude Include="ScoreCode\Framework\Components\component.h">
       <Filter>ヘッダー ファイル\Framework\Components</Filter>

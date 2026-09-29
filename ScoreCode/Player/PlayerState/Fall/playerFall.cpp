@@ -25,28 +25,27 @@ void DWPlayerFall::Update()
 
 	DWVector2 vel = Player->GetMoveSpeed();
 
-	if (input->GetRightBottom())
+	if (input->GetRightButton())
 	{
 		vel.x = Player->GetVelocity();
 		Player->SetIsFaceRight(true);
 	}
-	else if (input->GetLeftBottom())
+	else if (input->GetLeftButton())
 	{
 		vel.x = -Player->GetVelocity();
 		Player->SetIsFaceRight(false);
 	}
-	else if (!input->GetLeftBottom() && !input->GetRightBottom())
+	else if (!input->GetLeftButton() && !input->GetRightButton())
 	{
 		vel.x = 0.0f;
 	}
 
 	Player->SetMoveSpeed(vel);
 
-	if (input->GetActionBottom() && Player->GetAmmoCount() > 0 &&
-		Player->GetShootCoolDownCounter() >= Player->GetShootCoolDownFrame())
+	// 射撃はステート遷移ではなくアクション。撃てなければ何も起きない
+	if (input->GetActionButton())
 	{
-		Player->SetCurrentState(DWPlayer::EPlayerState::Shot);
-		return;
+		Player->TryShoot();
 	}
 }
 

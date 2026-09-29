@@ -6,7 +6,6 @@
 #include "Scene\Scenes\Scene.h"
 #include "Player\player.h"
 #include <cmath>
-#include "Camera\camera.h"
 
 DWBlock::DWBlock()
 {
@@ -21,7 +20,6 @@ DWBlock::DWBlock()
 void DWBlock::Init()
 {
 	AddComponent<DWBoxCollider2D>(this);
-	RegistPendingComponents();
 }
 
 void DWBlock::Uninit()
@@ -56,21 +54,8 @@ void DWBlock::DataUpdate()
 
 void DWBlock::Draw()
 {
-    DWVector2 offset(0.0f, 0.0f);
-    if (Scene != nullptr)
-    {
-        if (auto* cam = Scene->GetGameObject<DWCamera>())
-        {
-            offset = cam->GetOffset();
-        }
-    }
-
-    int topLeftX = static_cast<int>((Position.x - Scale.x * 0.5f) - offset.x);
-    int topLeftY = static_cast<int>((Position.y - Scale.y * 0.5f) - offset.y);
-    int bottomRightX = static_cast<int>((Position.x + Scale.x * 0.5f) - offset.x);
-    int bottomRightY = static_cast<int>((Position.y + Scale.y * 0.5f) - offset.y);
-
-    DrawBox(topLeftX, topLeftY, bottomRightX, bottomRightY, BlockColor, true);
+    const DWScreenRect rect = GetScreenRect();
+    DrawBox(rect.left, rect.top, rect.right, rect.bottom, BlockColor, true);
 
 #ifdef _DEBUG
     TCHAR* text;
@@ -90,8 +75,8 @@ void DWBlock::Draw()
     const unsigned int color = GetColor(255, 255, 255);
 
     DrawString(
-        topLeftX,
-        topLeftY + static_cast<int>(Scale.y * 0.1f),
+        rect.left,
+        rect.top + static_cast<int>(Scale.y * 0.1f),
         text, color
     );
 
@@ -102,7 +87,7 @@ void DWBlock::Draw()
 #endif
 }
 
-void DWBlock::OnCollisionEnter2D(const DWGameObject* other)
+void DWBlock::OnCollisionEnter2D(DWGameObject* other)
 {
 	if (other == nullptr) return;
 
@@ -115,7 +100,7 @@ void DWBlock::OnCollisionEnter2D(const DWGameObject* other)
 			BlockHitPoints--;
 			if (BlockHitPoints <= 0)
 			{
-				SetDestory();
+				SetDestroy();
 			}
 		}
 		break;
@@ -125,7 +110,7 @@ void DWBlock::OnCollisionEnter2D(const DWGameObject* other)
 	}
 }
 
-void DWBlock::OnCollisionExit2D(const DWGameObject* other)
+void DWBlock::OnCollisionExit2D(DWGameObject* other)
 {
 
 }

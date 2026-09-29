@@ -8,8 +8,8 @@ private:
 	const unsigned int Green = GetColor(0, 255, 0);
 	const unsigned int Yellow = GetColor(255, 255, 0);
 	const unsigned int White = GetColor(255, 255, 255);
-	const int ShowStageNumberFrame = 180;
-	const int MaxAlpha = 255;
+	static constexpr int ShowStageNumberFrame = 180;
+	static constexpr int MaxAlpha = 255;
 
 	int PlayerHealth = 0;
 	int PlayerAmmoRemain = 0;
